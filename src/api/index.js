@@ -1,0 +1,59 @@
+import express from "express";
+import auth from "../auth/routes/index.js";
+import user from "../users/routes/index.js";
+import admin from "../admin/routes/index.js";
+import legalDoc from "../legalDoc/routes/index.js";
+import contact from "../contact/routes/index.js";
+import notification from "../notification/routes/index.js";
+import search from "../search/routes/index.js";
+import dashboard from "../dashboard/routes/index.js";
+import payment from "../payment/routes/index.js";
+import transaction from "../Transactions/routes/index.js";
+import earning from "../earning/routes/index.js";
+import review from "../review/routes/index.js";
+import faq from "../faq/routes/index.js";
+import report from "../report/routes/index.js";
+import subscription from "../subscription/routes/index.js";
+import service from "../service/routes/index.js";
+import business from "../buisness/routes/index.js";
+import booking from "../booking-service/routes/index.js";
+import addon from "../addon/routes/index.js";
+const router = express.Router();
+const baseurl = process.env.BASE_URL || "/api/v1";
+
+router.use(baseurl, auth);
+router.use(baseurl, faq);
+router.use(baseurl, user);
+router.use(baseurl, admin);
+router.use(baseurl, legalDoc);
+router.use(baseurl, contact);
+router.use(baseurl, notification);
+// router.use(baseurl, listing);
+router.use(baseurl, search);
+// router.use(baseurl, deal);
+// router.use(baseurl, message);
+router.use(baseurl, dashboard);
+
+router.use(baseurl, subscription);
+// router.use(baseurl, redeem);
+// router.use(baseurl, referral);
+router.use(baseurl, payment);
+router.use(baseurl, transaction);
+router.use(baseurl, earning);
+router.use(baseurl, review);
+// router.use(baseurl, gift);
+router.use(baseurl, report);
+router.use(baseurl, service);
+router.use(baseurl, business);
+router.use(baseurl, booking);
+router.use(`${baseurl}/addon`, addon);
+// Update code
+router.use(baseurl, (req, res) => {
+  return res.status(404).send({
+    success: false,
+    error: true,
+    message: "No matching API route found for this request",
+  });
+});
+
+export default router;

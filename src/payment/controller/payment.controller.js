@@ -1,0 +1,642 @@
+import mongoose from "mongoose";
+import userModel from "../../auth/schema/auth.modal.js";
+import Payment from "../schema/payment.modal.js";
+import subscriptionModal from "../../subscription/schema/subscription.modal.js";
+
+import Stripe from "stripe";
+
+// Initialize Stripe with your secret key
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+export const stripeAccountOnboarding = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id || req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in token",
+      });
+    }
+
+    // Check if Stripe is configured
+    if (!stripe) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Stripe is not configured. Please add STRIPE_SECRET_KEY to environment variables.",
+      });
+    }
+
+    // Validate environment URLs
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3001";
+    const refreshUrl =
+      process.env.ONBOARDING_REFRESH_URL || `${frontendUrl}/stripe-refresh`;
+    const returnUrl =
+      process.env.ONBOARDING_RETURN_URL || `${frontendUrl}/stripe-return`;
+
+    // Find user
+    const user = await userModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // if user already has stripe account
+    if (user.stripeAccountId) {
+      const account = await stripe.accounts.retrieve(user.stripeAccountId);
+
+      const cardPayments = account.capabilities?.card_payments;
+      const transfers = account.capabilities?.transfers;
+      const requirements = account.requirements?.currently_due || [];
+
+      // if verified
+      if (cardPayments === "active" && transfers === "active") {
+        // update DB to mark as connected
+        await userModel.findByIdAndUpdate(user.id, {
+          isStripeConnected: true,
+        });
+
+        return res.status(200).json({
+          success: true,
+          status: "verified",
+          message: "Stripe account verified successfully.",
+          capabilities: account.capabilities,
+        });
+      }
+
+      // if not verified → generate onboarding link
+      const accountLinks = await stripe.accountLinks.create({
+        account: user.stripeAccountId,
+        refresh_url: `${refreshUrl}?accountId=${user.stripeAccountId}`,
+        return_url: `${returnUrl}?accountId=${user.stripeAccountId}`,
+        type: "account_onboarding",
+      });
+
+      // update DB to store stripeAccountId & mark connected
+      await userModel.findByIdAndUpdate(user.id, {
+        stripeAccountId: user.stripeAccountId,
+        isStripeConnected: true,
+      });
+
+      return res.status(200).json({
+        success: true,
+        status: requirements.length > 0 ? "requirements_due" : "pending",
+        message:
+          requirements.length > 0
+            ? "Additional information required for Stripe verification."
+            : "Your Stripe account verification is under review.",
+        requirements,
+        onboardingLink: accountLinks.url,
+      });
+    }
+
+    // if user has no stripe account → create new account
+    const account = await stripe.accounts.create({
+      type: "express",
+      country: "US",
+      email: user?.email,
+      business_type: "individual",
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      settings: {
+        payouts: {
+          schedule: {
+            delay_days: 2, // minimum allowed
+          },
+        },
+      },
+    });
+
+    const accountLink = await stripe.accountLinks.create({
+      account: account.id,
+      refresh_url: `${refreshUrl}?accountId=${account.id}`,
+      return_url: `${returnUrl}?accountId=${account.id}`,
+      type: "account_onboarding",
+    });
+
+    // update DB with stripeAccountId & mark connected
+    await userModel.findByIdAndUpdate(user.id, {
+      stripeAccountId: account.id,
+      isStripeConnected: true,
+    });
+
+    return res.status(200).json({
+      success: true,
+      status: "pending",
+      message: "Your Stripe account verification is under review.",
+      capabilities: account.capabilities,
+      onboardingLink: accountLink.url,
+    });
+  } catch (error) {
+    console.error("Error in stripe account onboarding:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error creating Stripe account onboarding",
+      error: error.message,
+    });
+  }
+};
+
+export const verifySubscriptionPayment = async (req, res) => {
+  try {
+    const sessionId = req.query.sessionId || req.query.session_id;
+
+    if (!sessionId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Session ID is required" });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status === "paid") {
+      const { userId, subscriptionId, billingCycle } = session.metadata;
+
+      if (!userId || !subscriptionId) {
+        console.error("Missing metadata in Stripe session:", session.id);
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid session metadata: userId or subscriptionId missing" 
+        });
+      }
+
+      // Calculate expiry date (default to monthly if missing)
+      const expiryDate = new Date();
+      const cycle = billingCycle || "monthly";
+      
+      if (cycle === "monthly") {
+        expiryDate.setMonth(expiryDate.getMonth() + 1);
+      } else if (cycle === "yearly") {
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      }
+
+      // Find the subscription plan to check if it's Founding Member
+      const plan = await subscriptionModal.findById(subscriptionId);
+      const isFoundingMemberPlan = plan && plan.planName === "Founding Member";
+
+      // Update user
+      const updatedUser = await userModel
+        .findByIdAndUpdate(
+          userId,
+          {
+            subscriptionId: subscriptionId,
+            subscriptionExpiry: expiryDate,
+            isFoundedMember: isFoundingMemberPlan ? true : undefined,
+          },
+          { new: true },
+        )
+        .populate("subscriptionId");
+
+      // Record payment for Admin Earnings
+      await Payment.create({
+        amount: session.amount_total / 100,
+        admin_amount: session.amount_total / 100,
+        currency: session.currency,
+        status: "SUCCESS",
+        provider: "STRIPE",
+        userId: userId,
+        sessionId: sessionId,
+        description: "Subscription Payment",
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment verified and subscription updated!",
+        data: updatedUser,
+      });
+    }
+
+    return res
+      .status(400)
+      .json({ success: false, message: "Payment not completed" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createSubscriptionCheckout = async (req, res) => {
+  try {
+    const { subscriptionId } = req.params;
+    const userId = req.user?._id || req.user?.id;
+
+    if (!stripe) {
+      return res.status(500).json({ message: "Stripe not configured" });
+    }
+
+    const subscriptionPlan = await subscriptionModal.findById(subscriptionId);
+    if (!subscriptionPlan) {
+      return res.status(404).json({ message: "Subscription plan not found" });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: subscriptionPlan.planName,
+              description: `${subscriptionPlan.billingCycle} subscription`,
+            },
+            unit_amount: Math.round(subscriptionPlan.price * 100), // Stripe uses cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${process.env.CLIENT_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.CLIENT_URL}/subscription/cancel`,
+      metadata: {
+        userId: userId.toString(),
+        subscriptionId: subscriptionId.toString(),
+        billingCycle: subscriptionPlan.billingCycle,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      url: session.url,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const webhook = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_KEY,
+    );
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+
+
+    if (session.metadata && session.metadata.subscriptionId && session.metadata.userId) {
+      const { userId, subscriptionId, billingCycle } = session.metadata;
+      console.log(`Processing webhook for user ${userId}, subscription ${subscriptionId}`);
+
+      // Calculate expiry date (default to monthly if missing)
+      const expiryDate = new Date();
+      const cycle = billingCycle || "monthly";
+
+      if (cycle === "monthly") {
+        expiryDate.setMonth(expiryDate.getMonth() + 1);
+      } else if (cycle === "yearly") {
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      }
+
+      // Find the subscription plan to check if it's Founding Member
+      const plan = await subscriptionModal.findById(subscriptionId);
+      const isFoundingMemberPlan = plan && plan.planName === "Founding Member";
+
+      // Update user
+      await userModel.findByIdAndUpdate(userId, {
+        subscriptionId: subscriptionId,
+        subscriptionExpiry: expiryDate,
+        isFoundedMember: isFoundingMemberPlan ? true : undefined,
+      });
+
+      // Record payment for Admin Earnings
+      await Payment.create({
+        amount: session.amount_total / 100,
+        admin_amount: session.amount_total / 100,
+        currency: session.currency,
+        status: "SUCCESS",
+        provider: "STRIPE",
+        userId: userId,
+        sessionId: session.id,
+      });
+    }
+  }
+
+  res.json({ received: true });
+};
+
+export const capturePayment = async (req, res) => {
+  return res.status(503).json({
+    message: "Payment capture is currently disabled",
+    reason: "Collaboration features have been removed",
+  });
+};
+
+export const getPaymentStatus = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const userId = req.user?._id || req.user?.id || req.user?.userId;
+
+    if (!paymentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment ID is required",
+      });
+    }
+
+    // Find payment
+    const payment = await Payment.findById(paymentId)
+      .populate("userId", "name email")
+      .populate("title", "status payment");
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found",
+      });
+    }
+
+    // Check if user owns the payment
+    if (payment.userId._id.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only view your own payments",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment status retrieved successfully",
+      data: {
+        payment: {
+          _id: payment._id,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          description: payment.description,
+          sessionId: payment.sessionId,
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt,
+          collaboration: payment.title,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error getting payment status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error getting payment status",
+      error: error.message,
+    });
+  }
+};
+
+export const getUserPayments = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.user?.id || req.user?.userId;
+    const { page = 1, limit = 10, status } = req.query;
+
+    const filter = { userId, isDeleted: false };
+
+    if (status) {
+      filter.status = status.toUpperCase();
+    }
+
+    const skip = (page - 1) * limit;
+
+    const payments = await Payment.find(filter)
+      .populate("title", "status payment")
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip(skip);
+
+    const total = await Payment.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      message: "Payments retrieved successfully",
+      data: {
+        payments,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          total,
+          limit: parseInt(limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error getting user payments:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error getting user payments",
+      error: error.message,
+    });
+  }
+};
+
+export const userSpendingGrowth = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+
+    // Create date range for the specified year
+    const startDate = new Date(year, 0, 1); // January 1st
+    const endDate = new Date(year, 11, 31); // December 31st
+
+    // Get total spending for the year (host spending)
+    const totalSpending = await Payment.aggregate([
+      {
+        $match: {
+          userId: userId, // Host ID
+          status: { $in: ["SUCCESS", "IN_PROGRESS", "HOLD"] },
+          createdAt: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    // Get spending by month (host spending)
+    const monthlySpending = await Payment.aggregate([
+      {
+        $match: {
+          userId: userId, // Host ID
+          status: { $in: ["SUCCESS", "IN_PROGRESS", "HOLD"] },
+          createdAt: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          amount: { $sum: "$amount" },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+    ]);
+
+    // Initialize all 12 months with 0 spending
+    const monthlyData = [];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    for (let i = 1; i <= 12; i++) {
+      const monthData = monthlySpending.find((item) => item._id === i);
+      monthlyData.push({
+        month: months[i - 1],
+        monthNumber: i,
+        amount: monthData ? monthData.amount : 0,
+        count: monthData ? monthData.count : 0,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      error: false,
+      message: "User spending growth retrieved successfully",
+      data: {
+        year,
+        totalSpending: totalSpending[0]?.total || 0,
+        monthlyData,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: true,
+      message: "Error retrieving user spending growth",
+      error: error.message,
+    });
+  }
+};
+
+export const adminEarnings = async (req, res) => {
+  try {
+    const currentYear = new Date().getFullYear();
+
+    // 1. Overall Stats & Counts
+    const [earnings, totalConsumers, totalProviders, planBreakdown] = await Promise.all([
+      Payment.aggregate([
+        { $match: { status: "SUCCESS" } },
+        {
+          $group: {
+            _id: null,
+            totalEarnings: { $sum: "$admin_amount" },
+            totalSubscriptions: { $sum: 1 },
+          },
+        },
+      ]),
+      userModel.countDocuments({ role: "consumer" }),
+      userModel.countDocuments({ role: "serviceProvider" }),
+      userModel.aggregate([
+        { $match: { subscriptionId: { $ne: null } } },
+        {
+          $group: {
+            _id: "$subscriptionId",
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $lookup: {
+            from: "subscriptions",
+            localField: "_id",
+            foreignField: "_id",
+            as: "planDetails",
+          },
+        },
+        { $unwind: "$planDetails" },
+        {
+          $project: {
+            planName: "$planDetails.planName",
+            count: 1,
+          },
+        },
+      ]),
+    ]);
+
+    // 2. Monthly Growth for the current year
+    const monthlyGrowth = await Payment.aggregate([
+      {
+        $match: {
+          status: "SUCCESS",
+          createdAt: {
+            $gte: new Date(`${currentYear}-01-01`),
+            $lte: new Date(`${currentYear}-12-31`),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          earnings: { $sum: "$admin_amount" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Format monthly data
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const chartData = monthNames.map((month, index) => {
+      const found = monthlyGrowth.find((m) => m._id === index + 1);
+      return {
+        month,
+        earnings: found ? found.earnings : 0,
+        subscriptions: found ? found.count : 0,
+      };
+    });
+
+    const summary = earnings.length > 0 ? earnings[0] : { totalEarnings: 0, totalSubscriptions: 0 };
+    // Remove the null _id from response to make it cleaner
+    delete summary._id;
+
+    return res.status(200).json({
+      success: true,
+      message: "Admin overview data retrieved successfully",
+      data: {
+        overview: {
+          totalRevenue: summary.totalEarnings,
+          totalSubscriptions: summary.totalSubscriptions,
+          totalConsumers,
+          totalProviders,
+          activeUsers: totalConsumers + totalProviders,
+        },
+        planBreakdown,
+        monthlyChart: chartData,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

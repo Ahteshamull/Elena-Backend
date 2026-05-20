@@ -1,0 +1,13 @@
+import express from "express";
+import multer from "multer";
+import { createContact } from "../controller/contact.controller.js";
+
+const router = express.Router();
+
+// Configure multer for form-data
+const upload = multer();
+
+//localhost:8001/api/v1/contact/create-contact (user only)
+router.post("/create-contact", upload.none(), createContact);
+
+export default router;
