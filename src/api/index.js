@@ -13,11 +13,7 @@ import earning from "../earning/routes/index.js";
 import review from "../review/routes/index.js";
 import faq from "../faq/routes/index.js";
 import report from "../report/routes/index.js";
-import subscription from "../subscription/routes/index.js";
-import service from "../service/routes/index.js";
-import business from "../buisness/routes/index.js";
-import booking from "../booking-service/routes/index.js";
-import addon from "../addon/routes/index.js";
+
 const router = express.Router();
 const baseurl = process.env.BASE_URL || "/api/v1";
 
@@ -34,7 +30,6 @@ router.use(baseurl, search);
 // router.use(baseurl, message);
 router.use(baseurl, dashboard);
 
-router.use(baseurl, subscription);
 // router.use(baseurl, redeem);
 // router.use(baseurl, referral);
 router.use(baseurl, payment);
@@ -43,10 +38,6 @@ router.use(baseurl, earning);
 router.use(baseurl, review);
 // router.use(baseurl, gift);
 router.use(baseurl, report);
-router.use(baseurl, service);
-router.use(baseurl, business);
-router.use(baseurl, booking);
-router.use(`${baseurl}/addon`, addon);
 // Update code
 router.use(baseurl, (req, res) => {
   return res.status(404).send({

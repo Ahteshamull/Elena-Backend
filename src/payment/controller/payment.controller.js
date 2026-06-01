@@ -1,7 +1,14 @@
 import mongoose from "mongoose";
 import userModel from "../../auth/schema/auth.modal.js";
 import Payment from "../schema/payment.modal.js";
-import subscriptionModal from "../../subscription/schema/subscription.modal.js";
+
+const subscriptionModal = mongoose.models.Subscription || mongoose.model("Subscription", new mongoose.Schema({
+  planName: String,
+  billingCycle: String,
+  price: Number,
+  features: [String],
+  status: String,
+}, { timestamps: true }));
 
 import Stripe from "stripe";
 

@@ -1,5 +1,9 @@
 import userModel from "../../auth/schema/auth.modal.js";
-import serviceModel from "../../service/schema/service.modal.js";
+import mongoose from "mongoose";
+
+const serviceModel = mongoose.models.Service || mongoose.model("Service", new mongoose.Schema({
+  serviceProviderId: mongoose.Schema.Types.ObjectId,
+}));
 
 export const checkSubscription = async (req, res, next) => {
   try {
