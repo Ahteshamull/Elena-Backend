@@ -7,7 +7,7 @@ import {
   userGrowth,
   blockUser,
   allBlockedUsers,
-  approveServiceProvider,
+  approveChef,
 } from "../controller/user.controller.js";
 import {
   upload,
@@ -18,13 +18,13 @@ import superAdminMiddleware from "../../helper/middlewares/superAdminMiddleware.
 import adminMiddleware from "../../helper/middlewares/authmiddleware.js";
 const router = express.Router();
 
-//localhost:8001/api/v1/user/all-users
+//localhost:8005/api/v1/user/all-users
 router.get("/all-users", allUser);
 
-//localhost:8001/api/v1/user/single-user/:id
+//localhost:8005/api/v1/user/single-user/:id
 router.get("/single-user/:id", singleUser);
 
-//localhost:8001/api/v1/user/update-profile - Update own profile (gets ID from token)
+//localhost:8005/api/v1/user/update-profile - Update own profile (gets ID from token)
 router.patch(
   "/update-profile",
   authenticateToken,
@@ -33,16 +33,16 @@ router.patch(
   updateProfile,
 );
 
-//localhost:8001/api/v1/user/delete-user/:id
+//localhost:8005/api/v1/user/delete-user/:id
 router.delete("/delete-user/:id", deleteUser);
 
-//localhost:8001/api/v1/user/user-growth
+//localhost:8005/api/v1/user/user-growth
 router.get("/user-growth", userGrowth);
 
-//localhost:8001/api/v1/user/block-user/:id
+//localhost:8005/api/v1/user/block-user/:id
 router.patch("/block-user/:id", authenticateToken, blockUser);
 
-//localhost:8001/api/v1/user/blocked-users
+//localhost:8005/api/v1/user/blocked-users
 router.get(
   "/blocked-users",
   superAdminMiddleware,
@@ -50,11 +50,7 @@ router.get(
   allBlockedUsers,
 );
 
-//localhost:8001/api/v1/user/approve-provider/:id
-router.patch(
-  "/approve-provider/:id",
-  authenticateToken,
-  approveServiceProvider
-);
+//localhost:8005/api/v1/user/approve-provider/:id
+router.patch("/approve-provider/:id", authenticateToken, approveChef);
 
 export default router;

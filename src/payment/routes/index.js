@@ -4,7 +4,7 @@ import payment from "./payment.route.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/payment/
+// localhost:8005/api/v1/payment/
 router.use("/payment", payment);
 
 export default router;

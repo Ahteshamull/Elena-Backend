@@ -10,19 +10,19 @@ import { authenticateToken } from "../../helper/middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/faq/create-faq
+// localhost:8005/api/v1/faq/create-faq
 router.post("/create-faq", authenticateToken, createFaq);
 
-// localhost:8001/api/v1/faq/get-all-faqs
+// localhost:8005/api/v1/faq/get-all-faqs
 router.get("/get-all-faqs", getAllFaqs);
 
-// localhost:8001/api/v1/faq/get-faq/:id
+// localhost:8005/api/v1/faq/get-faq/:id
 router.get("/get-faq/:id", getFaqById);
 
-// localhost:8001/api/v1/faq/update-faq/:id
+// localhost:8005/api/v1/faq/update-faq/:id
 router.patch("/update-faq/:id", authenticateToken, updateFaq);
 
-// localhost:8001/api/v1/faq/delete-faq/:id
+// localhost:8005/api/v1/faq/delete-faq/:id
 router.delete("/delete-faq/:id", authenticateToken, deleteFaq);
 
 export default router;

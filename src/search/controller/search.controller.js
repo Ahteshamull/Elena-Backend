@@ -35,28 +35,10 @@ const globalSearch = async (req, res) => {
       }
 
       const users = await User.find(userFilter)
-        .populate("subscriptionId")
-        .select("name email userName role city country aboutMe image subscriptionId isFoundedMember createdAt")
+        .select("name email userName role city country aboutMe image createdAt")
         .lean();
 
-      // Sort by priority
-      users.sort((a, b) => {
-        const getWeight = (user) => {
-          if (user.isFoundedMember) return 100;
-          const planName = user.subscriptionId?.planName;
-          if (planName === "Platinum") return 100;
-          if (planName === "Gold") return 80;
-          // Bronze trial users get Gold-level experience
-          if (planName === "Bronze" && user.subscriptionExpiry > new Date()) return 80;
-          if (planName === "Silver") return 60;
-          if (planName === "Bronze") return 40;
-          return 0;
-        };
-
-        return getWeight(b) - getWeight(a);
-      });
-
-      // Apply pagination after sorting
+      // Apply pagination
       const paginatedUsers = users.slice((page - 1) * limit, page * limit);
       results.users = paginatedUsers;
       results.pagination.total = users.length;

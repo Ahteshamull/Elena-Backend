@@ -2,13 +2,6 @@ import mongoose from "mongoose";
 import userModel from "../../auth/schema/auth.modal.js";
 import Payment from "../schema/payment.modal.js";
 
-const subscriptionModal = mongoose.models.Subscription || mongoose.model("Subscription", new mongoose.Schema({
-  planName: String,
-  billingCycle: String,
-  price: Number,
-  features: [String],
-  status: String,
-}, { timestamps: true }));
 
 import Stripe from "stripe";
 
@@ -152,130 +145,6 @@ export const stripeAccountOnboarding = async (req, res) => {
   }
 };
 
-export const verifySubscriptionPayment = async (req, res) => {
-  try {
-    const sessionId = req.query.sessionId || req.query.session_id;
-
-    if (!sessionId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Session ID is required" });
-    }
-
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-
-    if (session.payment_status === "paid") {
-      const { userId, subscriptionId, billingCycle } = session.metadata;
-
-      if (!userId || !subscriptionId) {
-        console.error("Missing metadata in Stripe session:", session.id);
-        return res.status(400).json({ 
-          success: false, 
-          message: "Invalid session metadata: userId or subscriptionId missing" 
-        });
-      }
-
-      // Calculate expiry date (default to monthly if missing)
-      const expiryDate = new Date();
-      const cycle = billingCycle || "monthly";
-      
-      if (cycle === "monthly") {
-        expiryDate.setMonth(expiryDate.getMonth() + 1);
-      } else if (cycle === "yearly") {
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-      }
-
-      // Find the subscription plan to check if it's Founding Member
-      const plan = await subscriptionModal.findById(subscriptionId);
-      const isFoundingMemberPlan = plan && plan.planName === "Founding Member";
-
-      // Update user
-      const updatedUser = await userModel
-        .findByIdAndUpdate(
-          userId,
-          {
-            subscriptionId: subscriptionId,
-            subscriptionExpiry: expiryDate,
-            isFoundedMember: isFoundingMemberPlan ? true : undefined,
-          },
-          { new: true },
-        )
-        .populate("subscriptionId");
-
-      // Record payment for Admin Earnings
-      await Payment.create({
-        amount: session.amount_total / 100,
-        admin_amount: session.amount_total / 100,
-        currency: session.currency,
-        status: "SUCCESS",
-        provider: "STRIPE",
-        userId: userId,
-        sessionId: sessionId,
-        description: "Subscription Payment",
-      });
-
-      return res.status(200).json({
-        success: true,
-        message: "Payment verified and subscription updated!",
-        data: updatedUser,
-      });
-    }
-
-    return res
-      .status(400)
-      .json({ success: false, message: "Payment not completed" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const createSubscriptionCheckout = async (req, res) => {
-  try {
-    const { subscriptionId } = req.params;
-    const userId = req.user?._id || req.user?.id;
-
-    if (!stripe) {
-      return res.status(500).json({ message: "Stripe not configured" });
-    }
-
-    const subscriptionPlan = await subscriptionModal.findById(subscriptionId);
-    if (!subscriptionPlan) {
-      return res.status(404).json({ message: "Subscription plan not found" });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: subscriptionPlan.planName,
-              description: `${subscriptionPlan.billingCycle} subscription`,
-            },
-            unit_amount: Math.round(subscriptionPlan.price * 100), // Stripe uses cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${process.env.CLIENT_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/subscription/cancel`,
-      metadata: {
-        userId: userId.toString(),
-        subscriptionId: subscriptionId.toString(),
-        billingCycle: subscriptionPlan.billingCycle,
-      },
-    });
-
-    res.status(200).json({
-      success: true,
-      url: session.url,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 export const webhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
@@ -291,49 +160,7 @@ export const webhook = async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-
-
-    if (session.metadata && session.metadata.subscriptionId && session.metadata.userId) {
-      const { userId, subscriptionId, billingCycle } = session.metadata;
-      console.log(`Processing webhook for user ${userId}, subscription ${subscriptionId}`);
-
-      // Calculate expiry date (default to monthly if missing)
-      const expiryDate = new Date();
-      const cycle = billingCycle || "monthly";
-
-      if (cycle === "monthly") {
-        expiryDate.setMonth(expiryDate.getMonth() + 1);
-      } else if (cycle === "yearly") {
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-      }
-
-      // Find the subscription plan to check if it's Founding Member
-      const plan = await subscriptionModal.findById(subscriptionId);
-      const isFoundingMemberPlan = plan && plan.planName === "Founding Member";
-
-      // Update user
-      await userModel.findByIdAndUpdate(userId, {
-        subscriptionId: subscriptionId,
-        subscriptionExpiry: expiryDate,
-        isFoundedMember: isFoundingMemberPlan ? true : undefined,
-      });
-
-      // Record payment for Admin Earnings
-      await Payment.create({
-        amount: session.amount_total / 100,
-        admin_amount: session.amount_total / 100,
-        currency: session.currency,
-        status: "SUCCESS",
-        provider: "STRIPE",
-        userId: userId,
-        sessionId: session.id,
-      });
-    }
-  }
-
+  console.log(`Received stripe webhook event: ${event.type}`);
   res.json({ received: true });
 };
 
@@ -553,46 +380,22 @@ export const adminEarnings = async (req, res) => {
     const currentYear = new Date().getFullYear();
 
     // 1. Overall Stats & Counts
-    const [earnings, totalConsumers, totalProviders, planBreakdown] = await Promise.all([
+    const [earnings, totalConsumers, totalProviders] = await Promise.all([
       Payment.aggregate([
         { $match: { status: "SUCCESS" } },
         {
           $group: {
             _id: null,
             totalEarnings: { $sum: "$admin_amount" },
-            totalSubscriptions: { $sum: 1 },
+            totalSubscriptions: { $sum: 1 }, // Map total subscription payments count to total successful payments
           },
         },
       ]),
-      userModel.countDocuments({ role: "consumer" }),
-      userModel.countDocuments({ role: "serviceProvider" }),
-      userModel.aggregate([
-        { $match: { subscriptionId: { $ne: null } } },
-        {
-          $group: {
-            _id: "$subscriptionId",
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $lookup: {
-            from: "subscriptions",
-            localField: "_id",
-            foreignField: "_id",
-            as: "planDetails",
-          },
-        },
-        { $unwind: "$planDetails" },
-        {
-          $project: {
-            planName: "$planDetails.planName",
-            count: 1,
-          },
-        },
-      ]),
+      userModel.countDocuments({ role: "user" }),
+      userModel.countDocuments({ role: "chef" }),
     ]);
 
-    // 2. Monthly Growth for the current year
+    // 2. Monthly Growth for the current year (based on successful transactions/payments)
     const monthlyGrowth = await Payment.aggregate([
       {
         $match: {
@@ -637,9 +440,11 @@ export const adminEarnings = async (req, res) => {
           totalSubscriptions: summary.totalSubscriptions,
           totalConsumers,
           totalProviders,
+          totalUsers: totalConsumers,
+          totalChefs: totalProviders,
           activeUsers: totalConsumers + totalProviders,
         },
-        planBreakdown,
+        planBreakdown: [],
         monthlyChart: chartData,
       },
     });

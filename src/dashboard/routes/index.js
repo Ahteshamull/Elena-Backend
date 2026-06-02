@@ -4,7 +4,7 @@ import dashboard from "./dashboard.route.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/dashboard/
+// localhost:8005/api/v1/dashboard/
 router.use("/dashboard", dashboard);
 
 export default router;

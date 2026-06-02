@@ -4,7 +4,7 @@ import legalDoc from "./legalDoc.route.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/legalDoc/
+// localhost:8005/api/v1/legalDoc/
 router.use("/legalDoc", legalDoc);
 
 export default router;

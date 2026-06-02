@@ -12,7 +12,7 @@ export const initializeSocket = (server) => {
     // Allow common local frontend origins during development and the configured FRONTEND_URL.
     const allowedOrigins = [
       process.env.FRONTEND_URL,
-      "http://localhost:8001",
+      "http://localhost:8005",
       "http://localhost:5173",
     ].filter(Boolean);
 

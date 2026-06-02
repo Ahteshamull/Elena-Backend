@@ -4,7 +4,7 @@ import earning from "./earning.route.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/earnings/
+// localhost:8005/api/v1/earnings/
 router.use("/earnings", earning);
 
 export default router;

@@ -10,13 +10,13 @@ import { requireHostOrInfluencerRole } from "../../helper/middlewares/role.middl
 
 const router = express.Router();
 
-// localhost:8001/api/v1/transactions/all-transaction
+// localhost:8005/api/v1/transactions/all-transaction
 router.get("/all-transaction", allTransactions);
 
-// localhost:8001/api/v1/transactions/single-transaction/:id
+// localhost:8005/api/v1/transactions/single-transaction/:id
 router.get("/single-transaction/:id", singleTransaction);
 
-// localhost:8001/api/v1/transactions/user-transaction
+// localhost:8005/api/v1/transactions/user-transaction
 router.get(
   "/user-transaction",
   authenticateToken,
@@ -24,7 +24,7 @@ router.get(
   userPersonalTransaction,
 );
 
-// localhost:8001/api/v1/transactions/user-transaction/:id
+// localhost:8005/api/v1/transactions/user-transaction/:id
 router.get(
   "/user-transaction/:id",
   authenticateToken,

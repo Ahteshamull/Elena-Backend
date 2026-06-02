@@ -54,17 +54,14 @@ const userSchema = new Schema(
     image: {
       type: String,
     },
-    license:{
-      type:String,
-    },
 
     refreshToken: {
       type: String,
     },
     role: {
       type: String,
-      enum: ["consumer", "serviceProvider"],
-      default: "consumer",
+      enum: ["user", "chef"],
+      default: "user",
     },
     isApprovedByAdmin: {
       type: Boolean,
@@ -78,12 +75,6 @@ const userSchema = new Schema(
     dateOfBirth: {
       type: String,
     },
-
-    // Profile setup fields
-    shopOrBusinessName: {
-      type: String,
-      trim: true,
-    },
     location: {
       type: String,
       trim: true,
@@ -92,34 +83,6 @@ const userSchema = new Schema(
       type: String,
       trim: true,
     },
-    category: {
-      type: String,
-      trim: true,
-    },
-
-    isFoundedMember: {
-      type: Boolean,
-      default: false,
-    },
-    subscriptionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Subscription",
-    },
-    subscriptionExpiry: {
-      type: Date,
-    },
-    isTrialUsed: {
-      type: Boolean,
-      default: false,
-    },
-    isBusinessCreated: {
-      type: Boolean,
-      default: false,
-    },
-    
-
-    // stripeAccountId: { type: String },
-    // isStripeConnected: { type: Boolean, default: false },
   },
   {
     timestamps: true,

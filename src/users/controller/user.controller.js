@@ -13,7 +13,6 @@ export const allUser = async (req, res) => {
     const users = await userModel
       .find()
       .select("-password -confirmPassword")
-      .populate("subscriptionId")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -53,8 +52,7 @@ export const singleUser = async (req, res) => {
 
     const userData = await userModel
       .findById(id)
-      .select("-password -confirmPassword -refreshToken")
-      .populate("subscriptionId");
+      .select("-password -confirmPassword -refreshToken");
 
     if (!userData) {
       return res.status(404).json({
@@ -252,14 +250,14 @@ export const userGrowth = async (req, res) => {
       $group: {
         _id: groupFormat,
         count: { $sum: 1 },
-        consumers: {
+        users: {
           $sum: {
-            $cond: [{ $eq: ["$role", "consumer"] }, 1, 0],
+            $cond: [{ $eq: ["$role", "user"] }, 1, 0],
           },
         },
-        serviceProviders: {
+        chefs: {
           $sum: {
-            $cond: [{ $eq: ["$role", "serviceProvider"] }, 1, 0],
+            $cond: [{ $eq: ["$role", "chef"] }, 1, 0],
           },
         },
       },
@@ -312,17 +310,17 @@ export const userGrowth = async (req, res) => {
         period: periodLabel,
         newUsers: item.count,
         cumulativeUsers: cumulativeCount,
-        consumers: item.consumers,
-        serviceProviders: item.serviceProviders,
+        users: item.users,
+        chefs: item.chefs,
         rawData: item._id,
       };
     });
 
     // Get overall stats
-    const totalUsers = await userModel.countDocuments();
-    const totalConsumers = await userModel.countDocuments({ role: "consumer" });
-    const totalServiceProviders = await userModel.countDocuments({
-      role: "serviceProvider",
+    const totalUsersCount = await userModel.countDocuments();
+    const totalUsers = await userModel.countDocuments({ role: "user" });
+    const totalChefs = await userModel.countDocuments({
+      role: "chef",
     });
 
     return res.status(200).json({
@@ -332,9 +330,9 @@ export const userGrowth = async (req, res) => {
         period,
         growthData: formattedData,
         summary: {
-          totalUsers,
-          totalConsumers,
-          totalServiceProviders,
+          totalUsers: totalUsersCount,
+          users: totalUsers,
+          chefs: totalChefs,
           growthRate:
             formattedData.length > 1
               ? (
@@ -454,7 +452,6 @@ export const allBlockedUsers = async (req, res) => {
     const blockedUsers = await userModel
       .find(filter)
       .select("-password -confirmPassword -refreshToken")
-      .populate("subscriptionId")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -481,7 +478,7 @@ export const allBlockedUsers = async (req, res) => {
   }
 };
 
-export const approveServiceProvider = async (req, res) => {
+export const approveChef = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -500,10 +497,10 @@ export const approveServiceProvider = async (req, res) => {
       });
     }
 
-    if (existingUser.role !== "serviceProvider") {
+    if (existingUser.role !== "chef") {
       return res.status(400).json({
         success: false,
-        message: "Only service providers require approval",
+        message: "Only chefs require approval",
       });
     }
 
@@ -513,7 +510,7 @@ export const approveServiceProvider = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Service provider ${existingUser.isApprovedByAdmin ? "approved" : "disapproved"} successfully`,
+      message: `Chef ${existingUser.isApprovedByAdmin ? "approved" : "disapproved"} successfully`,
     });
   } catch (error) {
     return res.status(500).json({

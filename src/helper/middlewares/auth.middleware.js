@@ -51,18 +51,13 @@ const requireAdminRole = requireRole("admin");
 // Middleware to check if user has user role
 const requireUserRole = requireRole("user");
 
-// Middleware to check if user has serviceProvider role and is approved
-const requireServiceProviderRole = (req, res, next) => {
-  if (!req.user || req.user.role !== "serviceProvider") {
+// Middleware to check if user has chef role
+const requireChefRole = (req, res, next) => {
+  if (!req.user || req.user.role !== "chef") {
     return res.status(403).json({
-      message: "Access denied. Only service providers can access this resource.",
+      message: "Access denied. Only chefs can access this resource.",
     });
   }
-  
-  // Optional: Add check for approval if required by flow
-  // if (!req.user.isApprovedByAdmin) {
-  //   return res.status(403).json({ message: "Your account is pending admin approval." });
-  // }
   
   next();
 };
@@ -112,6 +107,6 @@ export {
   requireHostRole,
   requireAdminRole,
   requireUserRole,
-  requireServiceProviderRole,
+  requireChefRole,
   requireSuperAdminOrAdminRole,
 };

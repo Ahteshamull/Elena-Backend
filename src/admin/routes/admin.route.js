@@ -24,7 +24,7 @@ const router = express.Router();
 
 // Create Admin route with file upload
 
-//localhost:8001/api/v1/admin/create-admin
+//localhost:8005/api/v1/admin/create-admin
 router.post(
   "/create-admin",
   // authenticateToken,
@@ -33,10 +33,10 @@ router.post(
   createAdmin,
 );
 
-//localhost:8001/api/v1/admin/admin-login
+//localhost:8005/api/v1/admin/admin-login
 router.post("/admin-login", adminLogin);
 
-//localhost:8001/api/v1/admin/update-admin-personal-info
+//localhost:8005/api/v1/admin/update-admin-personal-info
 router.put(
   "/update-admin-personal-info",
   upload.single("image"),
@@ -45,10 +45,10 @@ router.put(
   updateAdminPersonalInfo,
 );
 
-//localhost:8001/api/v1/admin/change-password
+//localhost:8005/api/v1/admin/change-password
 router.put("/change-password", authenticateToken, adminChangePassword);
 
-//localhost:8001/api/v1/admin/delete-admin/:id
+//localhost:8005/api/v1/admin/delete-admin/:id
 router.delete(
   "/delete-admin/:id",
   authenticateToken,
@@ -56,22 +56,22 @@ router.delete(
   deleteAdmin,
 );
 
-//localhost:8001/api/v1/admin/all-admins
+//localhost:8005/api/v1/admin/all-admins
 router.get("/all-admins", authenticateToken, allAdmin);
 
-//localhost:8001/api/v1/admin/single-admin/:id
+//localhost:8005/api/v1/admin/single-admin/:id
 router.get("/single-admin/:id", authenticateToken, singleAdmin);
 
-//localhost:8001/api/v1/admin/forgot-password
+//localhost:8005/api/v1/admin/forgot-password
 router.post("/forgot-password", forgotPassAdmin);
 
-//localhost:8001/api/v1/admin/otp-verify
+//localhost:8005/api/v1/admin/otp-verify
 router.post("/otp-verify", OTPVerifyAdmin);
 
-//localhost:8001/api/v1/admin/reset-password
+//localhost:8005/api/v1/admin/reset-password
 router.post("/reset-password", resetPasswordAdmin);
 
-//localhost:8001/api/v1/admin/approve-user/:id
+//localhost:8005/api/v1/admin/approve-user/:id
 router.patch("/approve-user/:id", authenticateToken, approveUser);
 
 export default router;

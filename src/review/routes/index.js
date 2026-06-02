@@ -4,7 +4,7 @@ import reviewRoute from "./review.route.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/review/
+// localhost:8005/api/v1/review/
 router.use("/review", reviewRoute);
 
 export default router;

@@ -16,11 +16,11 @@ export const dashboard = async (req, res) => {
       calendarEvents,
       recentUsers,
     ] = await Promise.all([
-      // Total consumers
-      userModel.countDocuments({ role: "consumer" }),
+      // Total users (formerly consumers)
+      userModel.countDocuments({ role: "user" }),
 
-      // Total service providers
-      userModel.countDocuments({ role: "serviceProvider" }),
+      // Total chefs (formerly serviceProviders)
+      userModel.countDocuments({ role: "chef" }),
 
       // Monthly user registration data for current year (User Ratio chart)
       userModel.aggregate([
@@ -145,6 +145,8 @@ export const dashboard = async (req, res) => {
         totals: {
           consumer: totalConsumers,
           serviceProvider: totalServiceProviders,
+          user: totalConsumers,
+          chef: totalServiceProviders,
         },
         userRatio: {
           year: currentYear,
@@ -185,8 +187,8 @@ export const userDashboard = async (req, res) => {
       });
     }
 
-    // Get user details to determine role and subscription
-    const user = await userModel.findById(userId).populate("subscriptionId");
+    // Get user details
+    const user = await userModel.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -195,17 +197,7 @@ export const userDashboard = async (req, res) => {
       });
     }
 
-    const subscription = user.subscriptionId;
-    const isBronze = subscription?.planName === "Bronze";
-    const isTrial = isBronze && user.subscriptionExpiry > new Date();
-    
-    // Bronze users get "preview" access
-    const isPreview = isBronze && !isTrial; // If trial is over, it's definitely preview/locked
-    // Actually the document says "Bronze includes Revenue dashboard preview..."
-    // So even during trial it might be a preview, OR they get full access during trial.
-    // "During the 14-day free trial, users receive temporary access to many Gold-tier amenities."
-    // This implies full access during trial.
-    const showFullAnalytics = !isBronze || isTrial;
+    const showFullAnalytics = true;
 
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth();
@@ -355,10 +347,10 @@ export const userDashboard = async (req, res) => {
         data: {
         userRole: user.role,
         subscription: {
-          planName: subscription?.planName || "No Plan",
-          isTrial,
-          isPreview,
-          showFullAnalytics,
+          planName: "No Plan",
+          isTrial: false,
+          isPreview: false,
+          showFullAnalytics: true,
         },
         totals: {
           earnings: {

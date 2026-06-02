@@ -4,7 +4,7 @@ import transaction from "./transaction.route.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/transactions/
+// localhost:8005/api/v1/transactions/
 router.use("/transactions", transaction);
 
 export default router;

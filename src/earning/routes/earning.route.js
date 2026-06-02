@@ -10,7 +10,7 @@ import {
 
 const router = express.Router();
 
-// localhost:8001/api/v1/earnings/all-earnings (for admin and super admin)
+// localhost:8005/api/v1/earnings/all-earnings (for admin and super admin)
 router.get(
   "/all-earnings",
   authenticateToken,
@@ -18,7 +18,7 @@ router.get(
   totalEarning,
 );
 
-// localhost:8001/api/v1/earnings/single-earning/:id (for admin and super admin)
+// localhost:8005/api/v1/earnings/single-earning/:id (for admin and super admin)
 router.get(
   "/single-earning/:id",
   authenticateToken,

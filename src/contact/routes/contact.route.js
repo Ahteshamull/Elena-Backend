@@ -7,7 +7,7 @@ const router = express.Router();
 // Configure multer for form-data
 const upload = multer();
 
-//localhost:8001/api/v1/contact/create-contact (user only)
+//localhost:8005/api/v1/contact/create-contact (user only)
 router.post("/create-contact", upload.none(), createContact);
 
 export default router;

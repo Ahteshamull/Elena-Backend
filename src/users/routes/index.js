@@ -4,7 +4,7 @@ import user from "./user.routes.js";
 
 const router = express.Router();
 
-// localhost:8001/api/v1/user/
+// localhost:8005/api/v1/user/
 router.use("/user", user);
 
 export default router;

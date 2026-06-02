@@ -34,13 +34,13 @@ export const createUser = async (req, res) => {
     phone,
     gender,
     role,
-    license,
+    image,
   } = bodyData;
 
-  // Handle uploaded license image if provided
-  let licenseData = license;
+  // Handle uploaded image if provided
+  let imageData = image;
   if (req.file) {
-    licenseData = `/uploads/${req.file.filename}`;
+    imageData = `/uploads/${req.file.filename}`;
   }
 
   // Basic required fields
@@ -106,6 +106,9 @@ export const createUser = async (req, res) => {
     const hashedOtp = await bcrypt.hash(otp, 10);
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    // Only chef needs admin approval. User is approved by default.
+    const isApprovedByAdmin = role === "chef" ? false : true;
+
     const user = new userModel({
       userName: normalizedUserName,
       email: normalizedEmail,
@@ -113,9 +116,9 @@ export const createUser = async (req, res) => {
       confirmPassword: hash,
       phone,
       gender,
-      role,
-      license: licenseData,
-      isApprovedByAdmin: false,
+      role: role || "user",
+      image: imageData,
+      isApprovedByAdmin,
       isVerify: false,
       registrationOtp: hashedOtp,
       otpExpiry,
@@ -192,17 +195,6 @@ export const verifyRegistration = async (req, res) => {
   // Activate account
   user.isVerify = true;
 
-  // Set Founding Member status if they are a serviceProvider and count is < 40
-  if (user.role === "serviceProvider") {
-    const verifiedProviderCount = await userModel.countDocuments({
-      role: "serviceProvider",
-      isVerify: true,
-    });
-    if (verifiedProviderCount < 1) {
-      user.isFoundedMember = true;
-    }
-  }
-
   user.registrationOtp = undefined;
   user.otpExpiry = undefined;
   await user.save({ validateBeforeSave: false });
@@ -211,10 +203,13 @@ export const verifyRegistration = async (req, res) => {
     .findById(user._id)
     .select("-password -confirmPassword -registrationOtp -otpExpiry");
 
+  const message = user.role === "chef"
+    ? "Account verified and created successfully! Once the admin approves your account, you will be able to log in."
+    : "Account verified and created successfully! You can now log in.";
+
   return res.status(201).json({
     success: true,
-    message:
-      "Account verified and created successfully! , When Admin approve it you can login",
+    message,
     data: populatedUser,
   });
 };
@@ -233,8 +228,7 @@ export const getMyProfile = async (req, res) => {
   try {
     const user = await userModel
       .findById(userId)
-      .select("-password -confirmPassword -refreshToken")
-      .populate("subscriptionId");
+      .select("-password -confirmPassword -refreshToken");
     if (!user) {
       return res.status(404).json({
         error: true,
@@ -324,10 +318,8 @@ export const login = async (req, res) => {
       id: existingUser._id,
       email: existingUser.email,
       userName: existingUser.userName,
-      role: existingUser.role || "consumer",
+      role: existingUser.role || "user",
       isVerify: existingUser.isVerify,
-      isFoundedMember: existingUser.isFoundedMember,
-      isBusinessCreated: existingUser.isBusinessCreated,
       image: existingUser.image,
       phone: existingUser.phone,
     };
@@ -771,8 +763,7 @@ export const currentUserLogin = async (req, res) => {
       .findById(decoded._id)
       .select(
         "-password -confirmPassword -refreshToken -registrationOtp -otpExpiry",
-      )
-      .populate("subscriptionId");
+      );
 
     if (!user) {
       return res.status(404).json({ error: true, message: "User not found" });
@@ -781,7 +772,7 @@ export const currentUserLogin = async (req, res) => {
     // Convert to object and ensure 'id' is included in a convenient format
     const userData = user.toObject();
     userData.id = user._id;
-    userData.role = user.role || "consumer";
+    userData.role = user.role || "user";
 
     return res.status(200).json({
       success: true,

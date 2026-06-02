@@ -543,10 +543,10 @@ const approveUser = async (req, res) => {
       });
     }
 
-    if (user.role !== "serviceProvider") {
+    if (user.role !== "chef") {
       return res.status(400).json({
         success: false,
-        message: "Only service providers can be approved by admin",
+        message: "Only chefs can be approved by admin",
       });
     }
 
@@ -555,7 +555,7 @@ const approveUser = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Service provider approved successfully",
+      message: "Chef approved successfully",
       data: user,
     });
   } catch (error) {
