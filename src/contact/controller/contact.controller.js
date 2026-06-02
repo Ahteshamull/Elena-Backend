@@ -12,10 +12,10 @@ const sendContactEmail = async ({
   message,
 }) => {
   return transporter.sendMail({
-    from: `" Barbar-App Contact" <${process.env.OTP_EMAIL}>`,
+    from: `" tableli Contact" <${process.env.OTP_EMAIL}>`,
     to: process.env.ADMIN_EMAIL,
     replyTo: email,
-    subject: ` Barbar-App New Contact Message: ${subject}`,
+    subject: ` tableli New Contact Message: ${subject}`,
     html: contactEmailTemplate(
       firstName,
       lastName,

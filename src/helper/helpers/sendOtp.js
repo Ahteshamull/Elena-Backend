@@ -97,21 +97,21 @@ class SendOtp {
       process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
 
     const mailOptions = {
-      from: `"Barbar-App" <${senderEmail}>`,
+      from: `"tableli" <${senderEmail}>`,
       replyTo: senderEmail,
       to: email,
-      subject: "Your Password Reset Code – Barbar-App",
+      subject: "Your Password Reset Code – tableli",
       headers: {
-        "X-Mailer": "Barbar-App Mailer",
+        "X-Mailer": "tableli Mailer",
         "X-Priority": "3",
       },
       // Plain-text fallback — required by anti-spam filters
       text: `
-Password Reset Request – Barbar-App
+Password Reset Request – tableli
 
 Hello ${userName},
 
-We received a request to reset the password for your Barbar-App account.
+We received a request to reset the password for your tableli account.
 
 Your reset code: ${otp}
 
@@ -119,7 +119,7 @@ This code will expire in 10 minutes.
 
 If you did not request a password reset, please ignore this email. Your account is safe.
 
-© ${new Date().getFullYear()} Barbar-App. All rights reserved.
+© ${new Date().getFullYear()} tableli. All rights reserved.
       `.trim(),
       html: `
         <!DOCTYPE html>
@@ -128,7 +128,7 @@ If you did not request a password reset, please ignore this email. Your account 
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-          <title>Password Reset – Barbar-App</title>
+          <title>Password Reset – tableli</title>
         </head>
         <body style="margin:0;padding:0;background-color:#f0f4ff;font-family:Arial,Helvetica,sans-serif;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -154,7 +154,7 @@ If you did not request a password reset, please ignore this email. Your account 
                               Password Reset
                             </h1>
                             <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">
-                              Barbar-App Security
+                              tableli Security
                             </p>
                           </td>
                         </tr>
@@ -169,7 +169,7 @@ If you did not request a password reset, please ignore this email. Your account 
                         Hello, ${userName}!
                       </h2>
                       <p style="margin:0 0 24px;color:#4a5568;font-size:15px;line-height:1.7;">
-                        We received a request to reset the password for your Barbar-App account.
+                        We received a request to reset the password for your tableli account.
                         Use the code below to continue. This code is valid for <strong>10 minutes</strong>.
                       </p>
 
@@ -221,7 +221,7 @@ If you did not request a password reset, please ignore this email. Your account 
                   <tr>
                     <td style="background:#f7fafc;padding:20px 40px;text-align:center;border-radius:0 0 12px 12px;">
                       <p style="margin:0;color:#a0aec0;font-size:12px;line-height:1.7;">
-                        © ${new Date().getFullYear()} Barbar-App. All rights reserved.<br />
+                        © ${new Date().getFullYear()} tableli. All rights reserved.<br />
                         This is an automated message — please do not reply to this email.
                       </p>
                     </td>
@@ -253,17 +253,17 @@ If you did not request a password reset, please ignore this email. Your account 
       process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
 
     const mailOptions = {
-      from: `"Barbar-App" <${senderEmail}>`,
+      from: `"tableli" <${senderEmail}>`,
       replyTo: senderEmail,
       to: email,
-      subject: "Your Barbar-App Verification Code",
+      subject: "Your tableli Verification Code",
       headers: {
-        "X-Mailer": "Barbar-App Mailer",
+        "X-Mailer": "tableli Mailer",
         "X-Priority": "3",
       },
       // Plain-text fallback — critical for avoiding spam filters
       text: `
-Welcome to Barbar-App, ${userName}!
+Welcome to tableli, ${userName}!
 
 Thank you for registering. Please verify your email to activate your account.
 
@@ -273,7 +273,7 @@ This code will expire in 10 minutes.
 
 If you did not create an account, please ignore this email.
 
-© ${new Date().getFullYear()} Barbar-App. All rights reserved.
+© ${new Date().getFullYear()} tableli. All rights reserved.
       `.trim(),
       html: `
         <!DOCTYPE html>
@@ -282,7 +282,7 @@ If you did not create an account, please ignore this email.
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-          <title>Verify Your Barbar-App Account</title>
+          <title>Verify Your tableli Account</title>
         </head>
         <body style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -294,7 +294,7 @@ If you did not create an account, please ignore this email.
                   <tr>
                     <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:36px 40px;text-align:center;">
                       <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">
-                        Barbar-App
+                        tableli
                       </h1>
                       <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">
                         Email Verification
@@ -334,7 +334,7 @@ If you did not create an account, please ignore this email.
                         <tr>
                           <td style="background:#f8f7ff;border-left:4px solid #4f46e5;border-radius:4px;padding:14px 18px;">
                             <p style="margin:0;color:#555;font-size:13px;line-height:1.5;">
-                              🔒 If you did not create a Barbar-App account, you can safely ignore this email.
+                              🔒 If you did not create a tableli account, you can safely ignore this email.
                               Do not share this code with anyone.
                             </p>
                           </td>
@@ -346,7 +346,7 @@ If you did not create an account, please ignore this email.
                   <tr>
                     <td style="background:#f4f6f8;padding:20px 40px;text-align:center;">
                       <p style="margin:0;color:#999;font-size:12px;line-height:1.6;">
-                        © ${new Date().getFullYear()} Barbar-App. All rights reserved.<br />
+                        © ${new Date().getFullYear()} tableli. All rights reserved.<br />
                         This is an automated message — please do not reply directly to this email.
                       </p>
                     </td>
@@ -377,7 +377,7 @@ If you did not create an account, please ignore this email.
         process.env.OTP_EMAIL ||
         process.env.EMAIL_USER,
       to: email,
-      subject: "Password Reset Successful - barbar-app",
+      subject: "Password Reset Successful - tableli",
       html: `
         <!DOCTYPE html>
         <html>

@@ -41,7 +41,7 @@ app.get("/", (req, res) => {
   res.json({
     error: false,
     success: true,
-    message: `Welcome to barbar-app . The backend Server is running on port ${PORT}`,
+    message: `Welcome to tableli . The backend Server is running on port ${PORT}`,
     version: "v1",
   });
 });

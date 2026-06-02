@@ -3,7 +3,7 @@ const emailTemplate_verify = (otp) => `
 <html>
 <body style="font-family:Arial;background:#f4f6f8;padding:20px">
   <div style="max-width:600px;margin:auto;background:#fff;border-radius:8px;padding:30px">
-    <h2 style="color:#4f46e5">🔐 barbar-app Password Reset</h2>
+    <h2 style="color:#4f46e5">🔐 tableli Password Reset</h2>
     <p>Your One-Time Password (OTP):</p>
 
     <h1 style="background:#4f46e5;color:#fff;display:inline-block;padding:10px 20px;border-radius:6px">
@@ -17,7 +17,7 @@ const emailTemplate_verify = (otp) => `
 
     <hr />
     <p style="font-size:12px;color:#999">
-      © ${new Date().getFullYear()} barbar-app
+      © ${new Date().getFullYear()} tableli
     </p>
   </div>
 </body>

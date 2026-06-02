@@ -1,4 +1,4 @@
-# barbar-app Backend
+# tableli Backend
 
 A Node.js backend application with authentication, real-time Socket.IO functionality, and payment webhook support.
 
@@ -23,7 +23,7 @@ A Node.js backend application with authentication, real-time Socket.IO functiona
 
 ```bash
 git clone <repository-url>
-cd barbar-app
+cd tableli
 ```
 
 2. Install dependencies:
