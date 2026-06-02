@@ -34,14 +34,7 @@ export const createUser = async (req, res) => {
     phone,
     gender,
     role,
-    image,
   } = bodyData;
-
-  // Handle uploaded image if provided
-  let imageData = image;
-  if (req.file) {
-    imageData = `/uploads/${req.file.filename}`;
-  }
 
   // Basic required fields
   if (!userName || !email || !password || !confirmPassword) {
@@ -117,7 +110,6 @@ export const createUser = async (req, res) => {
       phone,
       gender,
       role: role || "user",
-      image: imageData,
       isApprovedByAdmin,
       isVerify: false,
       registrationOtp: hashedOtp,
