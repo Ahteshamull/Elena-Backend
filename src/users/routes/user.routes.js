@@ -50,7 +50,7 @@ router.get(
   allBlockedUsers,
 );
 
-//localhost:8005/api/v1/user/approve-provider/:id
-router.patch("/approve-provider/:id", authenticateToken, approveChef);
+//localhost:8005/api/v1/user/approve-chef/:id
+router.patch("/approve-chef/:id", authenticateToken, approveChef);
 
 export default router;

@@ -101,8 +101,8 @@ export const createUser = async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
 
-    // Generate 4-digit OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -135,7 +135,7 @@ export const createUser = async (req, res) => {
     return res.status(200).send({
       success: true,
       message:
-        "A 4-digit verification code has been sent to your email. Please verify to activate your account.",
+        "A 6-digit verification code has been sent to your email. Please verify to activate your account.",
       data: { email: normalizedEmail },
     });
   } catch (error) {
@@ -562,8 +562,8 @@ export const ResendOtp = async (req, res) => {
   }
 
   try {
-    // Generate a fresh 4-digit OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    // Generate a fresh 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
