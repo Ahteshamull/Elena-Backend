@@ -16,11 +16,15 @@ import {
   verifyRegistration,
 } from "../controller/auth.controller.js";
 import { authenticateToken } from "../../helper/middlewares/auth.middleware.js";
+import {
+  upload,
+  errorCheck,
+} from "../../helper/middlewares/imageControlMiddleware.js";
 
 const router = express.Router();
 
 //localhost:8005/api/v1/auth/create-user
-router.post("/create-user", createUser);
+router.post("/create-user", upload.none(), errorCheck, createUser);
 //localhost:8005/api/v1/auth/verify-registration
 router.post("/verify-registration", verifyRegistration);
 //localhost:8005/api/v1/auth/login

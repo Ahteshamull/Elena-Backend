@@ -27,7 +27,7 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter to only allow images
+// File filter to allow images and PDF documents
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = [
     "image/jpeg",
@@ -38,6 +38,7 @@ const fileFilter = (req, file, cb) => {
     "image/svg+xml",
     "image/heic",
     "image/heif",
+    "application/pdf",
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
@@ -45,7 +46,7 @@ const fileFilter = (req, file, cb) => {
   } else {
     cb(
       new Error(
-        "Invalid file type. Only JPEG, JPG, PNG, GIF, WebP, SVG, and HEIC files are allowed."
+        "Invalid file type. Only JPEG, JPG, PNG, GIF, WebP, SVG, HEIC, and PDF files are allowed."
       ),
       false
     );

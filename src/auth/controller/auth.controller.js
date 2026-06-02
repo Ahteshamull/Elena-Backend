@@ -12,10 +12,10 @@ import Payment from "../../payment/schema/payment.modal.js";
 import Notification from "../../notification/schema/notification.modal.js";
 
 export const createUser = async (req, res) => {
-  let bodyData = req.body;
+  let bodyData = req.body || {};
 
   // Support sending data as a JSON string in a 'data' field (common for form-data)
-  if (req.body.data) {
+  if (req.body && req.body.data) {
     try {
       bodyData = JSON.parse(req.body.data);
     } catch (error) {
@@ -26,15 +26,8 @@ export const createUser = async (req, res) => {
     }
   }
 
-  const {
-    userName,
-    email,
-    password,
-    confirmPassword,
-    phone,
-    gender,
-    role,
-  } = bodyData;
+  const { userName, email, password, confirmPassword, phone, gender, role } =
+    bodyData;
 
   // Basic required fields
   if (!userName || !email || !password || !confirmPassword) {
@@ -186,23 +179,26 @@ export const verifyRegistration = async (req, res) => {
 
   // Activate account
   user.isVerify = true;
-
   user.registrationOtp = undefined;
   user.otpExpiry = undefined;
   await user.save({ validateBeforeSave: false });
 
-  const populatedUser = await userModel
-    .findById(user._id)
-    .select("-password -confirmPassword -registrationOtp -otpExpiry");
+  // Avoid a redundant DB query by converting the document to a plain object and cleaning up sensitive fields
+  const userData = user.toObject();
+  delete userData.password;
+  delete userData.confirmPassword;
+  delete userData.registrationOtp;
+  delete userData.otpExpiry;
 
-  const message = user.role === "chef"
-    ? "Account verified and created successfully! Once the admin approves your account, you will be able to log in."
-    : "Account verified and created successfully! You can now log in.";
+  const message =
+    user.role === "chef"
+      ? "Account verified and created successfully! You need to setup your profile. Once the admin approves your account, you will be able to log in."
+      : "Account verified and created successfully! You can now log in.";
 
   return res.status(201).json({
     success: true,
     message,
-    data: populatedUser,
+    data: userData,
   });
 };
 
@@ -937,4 +933,3 @@ export const deleteMyAccount = async (req, res) => {
     });
   }
 };
-

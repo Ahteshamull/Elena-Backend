@@ -13,6 +13,7 @@ import earning from "../earning/routes/index.js";
 import review from "../review/routes/index.js";
 import faq from "../faq/routes/index.js";
 import report from "../report/routes/index.js";
+import profileSetup from "../profileSetup/routes/profile.routes.js";
 
 const router = express.Router();
 const baseurl = process.env.BASE_URL || "/api/v1";
@@ -29,6 +30,7 @@ router.use(baseurl, search);
 // router.use(baseurl, deal);
 // router.use(baseurl, message);
 router.use(baseurl, dashboard);
+router.use(baseurl + "/profile", profileSetup);
 
 // router.use(baseurl, redeem);
 // router.use(baseurl, referral);

@@ -12,7 +12,16 @@ const listNotifications = async (req, res) => {
       });
     }
 
-    const filter = { receiverId: userId };
+    let filter = { receiverId: userId };
+
+    if (req.user?.role === "admin" || req.user?.role === "superAdmin") {
+      filter = {
+        $or: [
+          { receiverId: userId },
+          { receiverRole: "admin" }
+        ]
+      };
+    }
 
     if (isRead !== undefined) {
       filter.isRead = isRead === "true";
