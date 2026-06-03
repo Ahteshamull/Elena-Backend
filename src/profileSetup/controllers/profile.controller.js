@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Profile from "../schema/profile.modal.js";
 import userModel from "../../auth/schema/auth.modal.js";
 import { createNotification } from "../../notification/service/notification.service.js";
+import Menu from "../../menuCreate/schema/menu.modal.js";
 
 // Helper to safely parse array fields sent as JSON or comma-separated strings
 const parseArray = (field) => {
@@ -501,9 +502,27 @@ export const getMyProfile = async (req, res) => {
       });
     }
 
+    // Fetch and attach associated Menu documents
+    const menus = await Menu.find({ userId }).sort({ createdAt: -1 });
+    const profileObj = profile.toObject();
+    
+    // Map Menu documents to menuBuilder schema format
+    const mappedMenus = menus.map(m => ({
+      _id: m._id,
+      title: m.menuTitle,
+      courses: m.numberOfCourse,
+      image: m.menuImage,
+      category: m.menuCategory
+    }));
+
+    profileObj.menuBuilder = [
+      ...(profileObj.menuBuilder || []),
+      ...mappedMenus
+    ];
+
     return res.status(200).json({
       success: true,
-      data: profile,
+      data: profileObj,
     });
   } catch (error) {
     console.error("Error getting profile:", error);
@@ -540,9 +559,27 @@ export const getProfileByUserId = async (req, res) => {
       });
     }
 
+    // Fetch and attach associated Menu documents
+    const menus = await Menu.find({ userId: id }).sort({ createdAt: -1 });
+    const profileObj = profile.toObject();
+    
+    // Map Menu documents to menuBuilder schema format
+    const mappedMenus = menus.map(m => ({
+      _id: m._id,
+      title: m.menuTitle,
+      courses: m.numberOfCourse,
+      image: m.menuImage,
+      category: m.menuCategory
+    }));
+
+    profileObj.menuBuilder = [
+      ...(profileObj.menuBuilder || []),
+      ...mappedMenus
+    ];
+
     return res.status(200).json({
       success: true,
-      data: profile,
+      data: profileObj,
     });
   } catch (error) {
     console.error("Error getting profile by user ID:", error);

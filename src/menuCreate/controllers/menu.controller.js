@@ -84,9 +84,18 @@ export const getMyMenus = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    const search = req.query.search;
 
-    const total = await Menu.countDocuments({ userId });
-    const menus = await Menu.find({ userId })
+    const query = { userId };
+    if (search) {
+      query.$or = [
+        { menuTitle: { $regex: search, $options: "i" } },
+        { menuCategory: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const total = await Menu.countDocuments(query);
+    const menus = await Menu.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -127,9 +136,18 @@ export const getMenusByUserId = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    const search = req.query.search;
 
-    const total = await Menu.countDocuments({ userId: id });
-    const menus = await Menu.find({ userId: id })
+    const query = { userId: id };
+    if (search) {
+      query.$or = [
+        { menuTitle: { $regex: search, $options: "i" } },
+        { menuCategory: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const total = await Menu.countDocuments(query);
+    const menus = await Menu.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
