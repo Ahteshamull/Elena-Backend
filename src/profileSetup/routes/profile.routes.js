@@ -6,6 +6,7 @@ import {
 } from "../../helper/middlewares/imageControlMiddleware.js";
 import {
   upsertProfile,
+  updateProfile,
   getMyProfile,
   getProfileByUserId,
   updateProfileStatus,
@@ -26,6 +27,9 @@ const uploadFields = upload.fields([
 // Routes
 // POST localhost:8005/api/v1/profile/setup-profile - Create or update profile
 router.post("/setup-profile", authenticateToken, uploadFields, errorCheck, upsertProfile);
+
+// PATCH localhost:8005/api/v1/profile/update-profile - Update own profile
+router.patch("/update-profile", authenticateToken, uploadFields, errorCheck, updateProfile);
 
 // GET localhost:8005/api/v1/profile/me - Get logged-in user's profile
 router.get("/me", authenticateToken, getMyProfile);
