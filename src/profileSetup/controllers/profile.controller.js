@@ -205,7 +205,7 @@ export const upsertProfile = async (req, res) => {
         `Chef "${profile.fullName || profile.displayName || "A Chef"}" has submitted their profile for approval.`,
         null,
         userId,
-        "admin"
+        "admin",
       );
     } catch (notifError) {
       console.error("Failed to create admin notification:", notifError);
@@ -283,7 +283,7 @@ export const updateProfile = async (req, res) => {
       "portfolioWebsite",
       "travelRadiusLocation",
       "fullLegalName",
-      "digitalSignature"
+      "digitalSignature",
     ];
 
     stringFields.forEach((field) => {
@@ -360,7 +360,8 @@ export const updateProfile = async (req, res) => {
         return res.status(400).json({
           success: false,
           error: true,
-          message: "Invalid format for menuBuilder. Must be a valid JSON array.",
+          message:
+            "Invalid format for menuBuilder. Must be a valid JSON array.",
         });
       }
     }
@@ -438,7 +439,7 @@ export const updateProfile = async (req, res) => {
     const profile = await Profile.findOneAndUpdate(
       { userId },
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     // Sync with User's isApprovedByAdmin status (needs re-approval on save/update)
@@ -456,7 +457,7 @@ export const updateProfile = async (req, res) => {
         `Chef "${profile.fullName || profile.displayName || "A Chef"}" has updated their profile, requiring re-approval.`,
         null,
         userId,
-        "admin"
+        "admin",
       );
     } catch (notifError) {
       console.error("Failed to create admin notification:", notifError);
@@ -505,19 +506,19 @@ export const getMyProfile = async (req, res) => {
     // Fetch and attach associated Menu documents
     const menus = await Menu.find({ userId }).sort({ createdAt: -1 });
     const profileObj = profile.toObject();
-    
+
     // Map Menu documents to menuBuilder schema format
-    const mappedMenus = menus.map(m => ({
+    const mappedMenus = menus.map((m) => ({
       _id: m._id,
       title: m.menuTitle,
       courses: m.numberOfCourse,
       image: m.menuImage,
-      category: m.menuCategory
+      category: m.menuCategory,
     }));
 
     profileObj.menuBuilder = [
       ...(profileObj.menuBuilder || []),
-      ...mappedMenus
+      ...mappedMenus,
     ];
 
     return res.status(200).json({
@@ -562,19 +563,19 @@ export const getProfileByUserId = async (req, res) => {
     // Fetch and attach associated Menu documents
     const menus = await Menu.find({ userId: id }).sort({ createdAt: -1 });
     const profileObj = profile.toObject();
-    
+
     // Map Menu documents to menuBuilder schema format
-    const mappedMenus = menus.map(m => ({
+    const mappedMenus = menus.map((m) => ({
       _id: m._id,
       title: m.menuTitle,
       courses: m.numberOfCourse,
       image: m.menuImage,
-      category: m.menuCategory
+      category: m.menuCategory,
     }));
 
     profileObj.menuBuilder = [
       ...(profileObj.menuBuilder || []),
-      ...mappedMenus
+      ...mappedMenus,
     ];
 
     return res.status(200).json({
@@ -650,10 +651,12 @@ export const updateProfileStatus = async (req, res) => {
     // Send notification to the chef
     try {
       const adminId = req.user?.id || req.user?._id;
-      const title = status === "approved" ? "Profile Approved" : "Profile Rejected";
-      const message = status === "approved"
-        ? "Congratulations! Your chef profile has been approved by the administrator."
-        : `Your chef profile was rejected. Reason: ${profile.rejectionReason}`;
+      const title =
+        status === "approved" ? "Profile Approved" : "Profile Rejected";
+      const message =
+        status === "approved"
+          ? "Congratulations! Your chef profile has been approved by the administrator."
+          : `Your chef profile was rejected. Reason: ${profile.rejectionReason}`;
 
       await createNotification(
         `profile_${status}`,
@@ -662,7 +665,7 @@ export const updateProfileStatus = async (req, res) => {
         null, // listingId
         adminId, // createdBy (the admin)
         "chef", // receiverRole
-        profile.userId // receiverId (the chef)
+        profile.userId, // receiverId (the chef)
       );
     } catch (notifError) {
       console.error("Failed to create chef notification:", notifError);

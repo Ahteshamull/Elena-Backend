@@ -8,9 +8,18 @@ const menuItemSchema = new Schema({
 
 const profileSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
     isProfileCompleted: { type: Boolean, default: false },
-    status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
     rejectionReason: { type: String },
 
     // Section 01: Personal Information
@@ -65,4 +74,5 @@ const profileSchema = new Schema(
   },
 );
 
-export default mongoose.models.Profile || mongoose.model("Profile", profileSchema);
+export default mongoose.models.Profile ||
+  mongoose.model("Profile", profileSchema);
