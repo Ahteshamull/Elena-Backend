@@ -1,4 +1,5 @@
 import userModel from "../../auth/schema/auth.modal.js";
+import favoriteModel from "../../auth/schema/favorite.modal.js";
 import fs from "fs";
 import path from "path";
 
@@ -529,5 +530,122 @@ export const approveChef = async (req, res) => {
   }
 };
 
+export const createFavorite = async (req, res) => {
+  try {
+    // Get user ID from token
+    const userId = req.user?.id || req.user?._id;
+    // Get favorited user ID from request parameters
+    const { favoritedUserId } = req.params;
 
+    if (!userId || !favoritedUserId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "User authentication required and favorited user ID parameter is required",
+      });
+    }
 
+    // Verify chef exists and has role 'chef'
+    const chef = await userModel.findById(favoritedUserId);
+    if (!chef) {
+      return res.status(404).json({
+        success: false,
+        message: "Chef not found",
+      });
+    }
+
+    if (chef.role !== "chef") {
+      return res.status(400).json({
+        success: false,
+        message: "You can only favorite a user with 'chef' role",
+      });
+    }
+
+    // Check if already favorited
+    const existingFavorite = await favoriteModel.findOne({
+      myId: userId,
+      favoritedUserId,
+    });
+
+    if (existingFavorite) {
+      // Remove from favorites
+      await favoriteModel.deleteOne({ _id: existingFavorite._id });
+      return res.status(200).json({
+        success: true,
+        message: "User removed from favorites successfully",
+      });
+    } else {
+      // Add to favorites
+      const favorite = new favoriteModel({
+        myId: userId,
+        favoritedUserId,
+      });
+
+      await favorite.save();
+      await favorite.populate({
+        path: "favoritedUserId",
+        select: "-password -confirmPassword -refreshToken",
+      });
+      return res.status(201).json({
+        success: true,
+        message: "User added to favorites successfully",
+        data: favorite,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error toggling favorite",
+      error: error.message,
+    });
+  }
+};
+
+export const getMyFavoriteUsers = async (req, res) => {
+  try {
+    // Get user ID from token
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    // Get all favorite users
+    const favorites = await favoriteModel
+      .find({ myId: userId })
+      .populate({
+        path: "favoritedUserId",
+        select: "-password -confirmPassword -refreshToken",
+      });
+
+    // Extract user data and add isFavoritedByMe field
+    const favoriteUsers = favorites
+      .filter((fav) => fav.favoritedUserId)
+      .map((fav) => {
+        const user = fav.favoritedUserId.toObject();
+        user.isFavoritedByMe = true;
+        return user;
+      });
+
+    return res.status(200).json({
+      success: true,
+      message: "Favorite users retrieved successfully",
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalUsers: favoriteUsers.length,
+        limit: favoriteUsers.length,
+      },
+      data: favoriteUsers,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error retrieving favorite users",
+      error: error.message,
+    });
+  }
+};

@@ -8,12 +8,18 @@ import {
   blockUser,
   allBlockedUsers,
   approveChef,
+  createFavorite,
+  getMyFavoriteUsers,
 } from "../controller/user.controller.js";
 import {
   upload,
   errorCheck,
 } from "../../helper/middlewares/imageControlMiddleware.js";
-import { authenticateToken } from "../../helper/middlewares/auth.middleware.js";
+import {
+  authenticateToken,
+  requireSuperAdminOrAdminRole,
+  requireUserRole,
+} from "../../helper/middlewares/auth.middleware.js";
 import superAdminMiddleware from "../../helper/middlewares/superAdminMiddleware.js";
 import adminMiddleware from "../../helper/middlewares/authmiddleware.js";
 const router = express.Router();
@@ -37,13 +43,23 @@ router.patch(
 );
 
 //localhost:8005/api/v1/user/delete-user/:id
-router.delete("/delete-user/:id", deleteUser);
+router.delete(
+  "/delete-user/:id",
+  authenticateToken,
+  requireSuperAdminOrAdminRole,
+  deleteUser,
+);
 
 //localhost:8005/api/v1/user/user-growth
 router.get("/user-growth", userGrowth);
 
 //localhost:8005/api/v1/user/block-user/:id
-router.patch("/block-user/:id", authenticateToken, blockUser);
+router.patch(
+  "/block-user/:id",
+  authenticateToken,
+  requireSuperAdminOrAdminRole,
+  blockUser,
+);
 
 //localhost:8005/api/v1/user/blocked-users
 router.get(
@@ -55,5 +71,21 @@ router.get(
 
 //localhost:8005/api/v1/user/approve-chef/:id
 router.patch("/approve-chef/:id", authenticateToken, approveChef);
+
+//localhost:8005/api/v1/user/favorite/:favoritedUserId
+router.post(
+  "/favorite/:favoritedUserId",
+  authenticateToken,
+  requireUserRole,
+  createFavorite,
+);
+
+//localhost:8005/api/v1/user/favorites
+router.get(
+  "/favorites",
+  authenticateToken,
+  requireUserRole,
+  getMyFavoriteUsers,
+);
 
 export default router;
