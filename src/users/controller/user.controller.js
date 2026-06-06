@@ -4,14 +4,20 @@ import path from "path";
 
 export const allUser = async (req, res) => {
   try {
+    const { role } = req.params;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const totalUsers = await userModel.countDocuments();
+    const filter = {};
+    if (role) {
+      filter.role = role;
+    }
+
+    const totalUsers = await userModel.countDocuments(filter);
 
     const users = await userModel
-      .find()
+      .find(filter)
       .select("-password -confirmPassword")
       .skip(skip)
       .limit(limit)
@@ -21,7 +27,9 @@ export const allUser = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "All users retrieved successfully",
+      message: role
+        ? `${role.charAt(0).toUpperCase() + role.slice(1)}s retrieved successfully`
+        : "All users retrieved successfully",
       meta: {
         currentPage: page,
         totalPages,

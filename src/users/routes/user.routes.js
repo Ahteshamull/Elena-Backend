@@ -20,6 +20,9 @@ const router = express.Router();
 
 //localhost:8005/api/v1/user/all-users
 router.get("/all-users", allUser);
+router.get("/all-users/:role", allUser);
+
+
 
 //localhost:8005/api/v1/user/single-user/:id
 router.get("/single-user/:id", singleUser);
