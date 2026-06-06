@@ -1,5 +1,6 @@
 import userModel from "../../auth/schema/auth.modal.js";
 import favoriteModel from "../../auth/schema/favorite.modal.js";
+import Profile from "../../profileSetup/schema/profile.modal.js";
 import fs from "fs";
 import path from "path";
 
@@ -24,6 +25,25 @@ export const allUser = async (req, res) => {
       .limit(limit)
       .sort({ createdAt: -1 });
 
+    // Fetch profiles for users that have "chef" role
+    const chefUserIds = users.filter((u) => u.role === "chef").map((u) => u._id);
+    let profiles = [];
+    if (chefUserIds.length > 0) {
+      profiles = await Profile.find({ userId: { $in: chefUserIds } });
+    }
+
+    // Combine user and profile data
+    const usersWithProfile = users.map((user) => {
+      const userObj = user.toObject();
+      if (userObj.role === "chef") {
+        const profile = profiles.find(
+          (p) => p.userId.toString() === userObj._id.toString()
+        );
+        userObj.profile = profile || null;
+      }
+      return userObj;
+    });
+
     const totalPages = Math.ceil(totalUsers / limit);
 
     return res.status(200).json({
@@ -37,7 +57,7 @@ export const allUser = async (req, res) => {
         totalUsers,
         limit,
       },
-      data: users,
+      data: usersWithProfile,
     });
   } catch (error) {
     return res.status(500).json({
@@ -649,3 +669,90 @@ export const getMyFavoriteUsers = async (req, res) => {
     });
   }
 };
+
+export const findChef = async (req, res) => {
+  try {
+    const { location, date, guests, eventType } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const profileFilter = { status: "approved" };
+
+    // 1. Location filter
+    if (location) {
+      // Find user IDs that match the location query on their username or location field
+      const matchingUsers = await userModel.find({
+        role: "chef",
+        $or: [
+          { userName: { $regex: location, $options: "i" } },
+          { location: { $regex: location, $options: "i" } },
+        ],
+      });
+      const matchingUserIds = matchingUsers.map((u) => u._id);
+
+      profileFilter.$or = [
+        { userId: { $in: matchingUserIds } },
+        { travelRadiusLocation: { $regex: location, $options: "i" } },
+        { city: { $regex: location, $options: "i" } },
+        { country: { $regex: location, $options: "i" } },
+        { fullName: { $regex: location, $options: "i" } },
+      ];
+    }
+
+    // 2. Date filter (match chef's availableDates)
+    if (date) {
+      const searchDate = new Date(date);
+      if (!isNaN(searchDate.getTime())) {
+        const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
+        profileFilter.availableDates = {
+          $elemMatch: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        };
+      }
+    }
+
+    // 3. Event Type filter (matches chefCategory array)
+    if (eventType) {
+      profileFilter.chefCategory = { $in: [eventType] };
+    }
+
+    // Fetch matching profiles and populate user information
+    const totalChefs = await Profile.countDocuments(profileFilter);
+    const profiles = await Profile.find(profileFilter)
+      .populate({
+        path: "userId",
+        select: "-password -confirmPassword -refreshToken",
+      })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    // Filter out profiles if user status is not active
+    const activeChefProfiles = profiles.filter(
+      (profile) => profile.userId && profile.userId.status === "active"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Chefs retrieved successfully",
+      meta: {
+        currentPage: page,
+        totalPages: Math.ceil(totalChefs / limit),
+        totalChefs,
+        limit,
+      },
+      data: activeChefProfiles,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to find chefs",
+      error: error.message,
+    });
+  }
+};
+

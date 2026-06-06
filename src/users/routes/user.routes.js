@@ -10,6 +10,7 @@ import {
   approveChef,
   createFavorite,
   getMyFavoriteUsers,
+  findChef,
 } from "../controller/user.controller.js";
 import {
   upload,
@@ -87,5 +88,8 @@ router.get(
   requireUserRole,
   getMyFavoriteUsers,
 );
+
+// find chef
+router.get("/find-chef", findChef);
 
 export default router;
