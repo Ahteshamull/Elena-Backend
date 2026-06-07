@@ -7,50 +7,50 @@ const bookingSchema = new Schema(
     chefId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "Chef ID is required"],
+      required: true,
     },
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "User ID is required"],
+      required: true,
     },
     firstName: {
       type: String,
-      required: [true, "First name is required"],
+      required: true,
       trim: true,
     },
     lastName: {
       type: String,
-      required: [true, "Last name is required"],
+      required: true,
       trim: true,
     },
     email: {
       type: String,
-      required: [true, "Email address is required"],
+      required: true,
       trim: true,
     },
     phone: {
       type: String,
-      required: [true, "Phone number is required"],
+      required: true,
       trim: true,
     },
     eventLocation: {
       type: String,
-      required: [true, "Event location is required"],
+      required: true,
       trim: true,
     },
     eventDate: {
       type: Date,
-      required: [true, "Event date is required"],
+      required: true,
     },
     arrivalTime: {
       type: String,
-      required: [true, "Arrival time is required"],
+      required: true,
       trim: true,
     },
     numberOfGuests: {
       type: Number,
-      required: [true, "Number of guests is required"],
+      required: true,
     },
     bespokeMenuRate: {
       type: Number,
