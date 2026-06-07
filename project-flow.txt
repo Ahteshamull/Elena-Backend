@@ -1,111 +1,85 @@
-2Seats Platform — Complete End-to-End Project Flow (বাংলা ভার্সন)
+Tableli Platform — Complete End-to-End Project Flow (বাংলা ভার্সন)
 
-আমি আপনার সম্পূর্ণ project structure এবং এখন পর্যন্ত implement করা modules বিশ্লেষণ করেছি। নিচে 2Seats Platform-এর সম্পূর্ণ End-to-End Flow দেওয়া হলো, যেখানে Service Provider (Barber/Business Owner), Consumer (Customer), এবং Platform Admin — তিনটি side-এর workflow ব্যাখ্যা করা হয়েছে।
+আমি আপনার সম্পূর্ণ project structure এবং এখন পর্যন্ত implement করা modules বিশ্লেষণ করেছি। নিচে Tableli Platform-এর সম্পূর্ণ End-to-End Flow দেওয়া হলো, যেখানে Service Provider (Chef), Consumer (Customer), এবং Platform Admin — তিনটি side-এর workflow ব্যাখ্যা করা হয়েছে।
 
-1. Service Provider Journey (Barber / Business Owner)
-A. Registration & Business Setup
+1. Service Provider Journey (Chef)
+A. Registration & Setup
 Authentication (/auth)
 
-Provider প্রথমে registration করবে এবং serviceProvider role নির্বাচন করবে।
+Provider প্রথমে registration করবে এবং chef role নির্বাচন করবে।
 
 Features
 Email verification
 OTP verification
 Secure authentication
 JWT-based login system
-Business Profile Setup (/buisness)
 
-Service add করার আগে provider-কে business profile setup করতে হবে।
+Profile Setup (/profileSetup)
 
-Business তথ্য
-Shop Name
-Business Description
-Location
-Business Images
-Social Links
-Contact Information
+বুকিং রিসিভ করার আগে provider-কে profile setup করতে হবে।
+
+Profile তথ্য
+Full Name & Display Name
+About Me
+Location (City, Country)
+Cuisine Specialties & Category (yacht, villa, event, personal)
+Menu Details (Starting price, Sample Menu)
+Visual Portfolio (Dish images, Event highlights)
+Identity Verification (CV, Government ID, Food Safety Certificate)
+
 Subscription Selection (/subscription)
 
-Provider membership plan নির্বাচন করবে।
+Provider membership plan নির্বাচন করবে (যদি থাকে)।
 
-সাধারণত user প্রথমে:
+B. Menu & Service Management
+Menu Creation (/menuCreate)
 
-Bronze (14-Day Free Trial)
+Provider তার menu বা dishes create করবে।
 
-plan দিয়ে শুরু করবে।
+Example Cuisines/Services
+French Gastronomy
+Italian Classic
+Sushi Course
+Bespoke Menu
 
-Bronze Trial Restrictions
-Feature	Limit
-Maximum Services	3
-Maximum Bookings	5
-Analytics	Preview Only
-B. Service Management
-Service Creation (/service)
-
-Provider তার services create করবে।
-
-Example Services
-Haircut
-Beard Trim
-Facial
-Makeup
-Nail Service
 Service Details
+প্রতিটি menu-এর জন্য:
 
-প্রতিটি service-এর জন্য:
-
-Service Name
-Price
-Duration
-Category
+Menu Title
+Price per Person
+Courses
 Images
-Availability
-
-store হবে।
 
 Availability Management
+Provider available dates এবং service windows (Dinner, Brunch, Lunch) setup করবে।
 
-Provider working hours এবং slot setup করবে।
-
-Example
-Monday - Friday
-9:00 AM - 5:00 PM
-Add-on Services (/addon)
-
-Provider চাইলে platform থেকে extra business services purchase করতে পারবে।
-
-Example Addons
-Professional Consultation
-Review Setup
-Reputation Growth Service
 C. Booking & Client Interaction
-Incoming Bookings (/booking-service)
+Incoming Bookings (/booking-chef)
 
 Customer booking করলে provider notification পাবে।
 
 Notification System (/notification)
-
 Provider real-time notification পাবে:
 
-New Booking
+New Booking Request
 Booking Cancelled
-Booking Confirmed
 Review Added
-Booking Approval System
 
+Booking Approval System
 Provider pending bookings দেখতে পারবে এবং:
 
 Action	Result
-Accept	Booking Confirmed
-Cancel	Booking Rejected
-Review Management (/review)
+Confirm	Booking Confirmed
+Cancel	Booking Cancelled
 
+Review Management (/review)
 Customer review দিলে provider তা দেখতে পারবে।
 
 Review Data
 Rating
 Comment
 Customer Feedback
+
 D. Performance Tracking
 Dashboard (/dashboard)
 
@@ -115,65 +89,43 @@ Dashboard Metrics
 Analytics	Description
 Revenue Charts	আয়
 Total Bookings	মোট বুকিং
-Customer Growth	নতুন কাস্টমার
-Repeat Clients	পুনরায় আসা কাস্টমার
-Subscription-based Analytics Access
-Plan	Analytics Access
-Bronze	Preview Only
-Silver	Basic
-Gold	Advanced
-Platinum	Full
+Profile Views	প্রোফাইল ভিউ
+
 2. Consumer Journey (Customer)
-A. Service Discovery
+A. Chef Discovery
 Search System (/search)
 
-Customer nearby barber বা services search করবে।
+Customer nearby chef বা specific cuisine search করবে।
 
 Search Priority Logic
+System verified এবং highly rated chef-দের priority দেবে।
 
-System paid members-দের priority দেবে।
-
-Search Ranking
-Tier	Priority
-Founding Member	Highest
-Platinum	Highest
-Gold	High
-Silver	Medium
-Bronze	Low
 Provider Profile View
-
 Customer দেখতে পারবে:
 
-Portfolio
-Ratings
-Reviews
-Business Details
-Available Services
-B. Booking a Seat
+Chef's Portfolio
+Menu & Pricing
+Ratings & Reviews
+Available Dates
+
+B. Booking a Chef
 Availability Check
+Customer নির্দিষ্ট date-এ chef-এর availability চেক করবে।
 
-Customer নির্দিষ্ট date এবং service-এর available slot দেখতে পারবে।
-
-Booking Creation (/booking-service)
-
-Customer slot select করে booking request submit করবে।
+Booking Creation (/booking-chef)
+Customer guest count, date, arrival time, এবং location দিয়ে booking request submit করবে। সিস্টেম স্বয়ংক্রিয়ভাবে Subtotal, Concierge Service Fee (10%), এবং Estimated Taxes (8%) ক্যালকুলেট করে Total Amount জেনারেট করবে। 
+*বুকিং অবশ্যই ২৪ ঘণ্টা আগে করতে হবে এবং শেফের মিনিমাম বুকিং অ্যামাউন্ট রিচ করতে হবে।*
 
 Booking Notifications
-
 Customer notification পাবে যখন provider:
 
 booking confirm করবে
 booking cancel করবে
+
 C. Post-Service Experience
 Reviews & Ratings (/review)
-
 Service complete হওয়ার পরে customer review দিতে পারবে।
 
-Review System
-Feature	Purpose
-Rating	Provider quality
-Feedback	Customer experience
-Reputation	Business growth
 3. Platform Admin Journey (Super Admin)
 Admin Dashboard (/dashboard)
 
@@ -183,28 +135,14 @@ Admin Metrics
 Metric	Purpose
 Total Revenue	Platform Income
 Total Users	User Count
-Subscription Breakdown	Plan Analytics
-Active Providers	Business Tracking
-Subscription & Addon Management
+Active Chefs	Chef Tracking
 
-Admin manage করতে পারবে:
-
-Pricing Plans
-Addon Services
-Discounts
-Promotions
-Revenue Tracking (/earning)
-
-Admin subscription এবং addon purchase income track করবে।
+Chef Profile Verification
+Admin শেফদের ভেরিফিকেশন ডকুমেন্ট চেক করে প্রোফাইল approve করবেন। Approve না হলে শেফ বুকিং পাবেন না।
 
 Moderation System (/report)
-
 Admin reported content manage করবে।
 
-Example
-Fake Reviews
-Spam Users
-Abuse Reports
 4. Technical Infrastructure (Behind the Scenes)
 Database Layer (src/config/database)
 
@@ -216,83 +154,28 @@ MongoDB	Data Storage
 Mongoose	Relationship Handling
 JWT	Authentication
 Middleware	Access Control
-Authentication Middleware (src/helper/middlewares)
 
+Authentication Middleware (src/helper/middlewares)
 এই layer নিশ্চিত করে:
 
 User শুধু নিজের data access করতে পারবে
-Customer provider dashboard access করতে পারবে না
 Unauthorized request block হবে
+Chef specific route শুধুমাত্র chef access করতে পারবে
+
 Payment Gateway (src/payment)
-
-Stripe ব্যবহার করা হয়েছে:
-
-recurring subscriptions
-one-time payments
-addon purchases
-
-এর জন্য।
+Stripe ব্যবহার করা হয়েছে পেমেন্ট প্রসেসিংয়ের জন্য।
 
 Real-time Communication (src/socket)
+Socket system ব্যবহার করা হয়েছে instant notifications এবং live messaging-এর জন্য।
 
-Socket system ব্যবহার করা হয়েছে:
-
-instant notifications
-live messaging
-booking updates
-
-এর জন্য।
-
-Core System Logic (Platform Brain)
-Bronze Tier
-
-Platform-এর entry point।
-
-সুবিধা
-Trial visibility
-Gold-level temporary exposure
-Limitations
-3 services
-5 bookings
-Limited analytics
-Founding Member
-
-VIP early adopters।
-
-সুবিধা
-Lifetime pricing
-Platinum-level access
-Priority visibility
-Exclusive badge
-Gold & Platinum
-
-Growth-focused business tiers।
-
-Main Benefits
-Priority search ranking
-Advanced analytics
-Better customer reach
-Automation tools
-Project Architecture Strength
-
-এই project modular architecture দিয়ে build করা হয়েছে।
-
-এর ফলে future এ খুব সহজে add করা যাবে:
-
-Future Feature	Scalability
-AI Automation	Easy
-Referral Program	Easy
-Team Accounts	Easy
-Marketplace Features	Easy
-Advanced CRM	Easy
 Overall System Flow
 Customer
    ↓
-Search Provider
+Search Chef
    ↓
-Book Service
+Book Chef (with Date, Guests & Invoice Auto-calc)
    ↓
-Provider Accepts Booking
+Chef Confirms Booking
    ↓
 Notification System
    ↓
@@ -301,19 +184,3 @@ Service Completed
 Review & Rating
    ↓
 Analytics Updated
-Backend Architecture Flow
-Frontend App
-    ↓
-Express API
-    ↓
-Auth Middleware
-    ↓
-Subscription Middleware
-    ↓
-Feature Lock System
-    ↓
-Controller Logic
-    ↓
-MongoDB Database
-    ↓
-Stripe / Socket / Notification Services
