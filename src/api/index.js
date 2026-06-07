@@ -15,6 +15,7 @@ import faq from "../faq/routes/index.js";
 import report from "../report/routes/index.js";
 import profileSetup from "../profileSetup/routes/profile.routes.js";
 import menu from "../menuCreate/routes/menu.route.js";
+import booking from "../booking-chef/routes/booking.routes.js";
 
 const router = express.Router();
 const baseurl = process.env.BASE_URL || "/api/v1";
@@ -33,6 +34,7 @@ router.use(baseurl, search);
 router.use(baseurl, dashboard);
 router.use(baseurl + "/profile", profileSetup);
 router.use(baseurl + "/menu", menu);
+router.use(baseurl + "/booking", booking);
 
 // router.use(baseurl, redeem);
 // router.use(baseurl, referral);

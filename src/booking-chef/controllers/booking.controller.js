@@ -1,0 +1,483 @@
+import mongoose from "mongoose";
+import bookingModel from "../schema/booking.modal.js";
+import userModel from "../../auth/schema/auth.modal.js";
+import Profile from "../../profileSetup/schema/profile.modal.js";
+
+// @desc    Create a new chef booking
+// @route   POST /api/v1/booking/:chefId
+// @access  Private
+export const createBooking = async (req, res) => {
+  try {
+    const { chefId } = req.params;
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(chefId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Chef ID parameter",
+      });
+    }
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      eventLocation,
+      eventDate,
+      arrivalTime,
+      numberOfGuests,
+      bespokeMenuRate,
+    } = req.body;
+
+    // Validate request fields
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !phone ||
+      !eventLocation ||
+      !eventDate ||
+      !arrivalTime ||
+      !numberOfGuests
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // Prevent self-booking
+    if (userId.toString() === chefId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot book yourself",
+      });
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    // Phone validation (basic length check)
+    if (phone.length < 7 || phone.length > 20) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid phone number",
+      });
+    }
+    
+    // Arrival time basic validation
+    if (typeof arrivalTime !== 'string' || arrivalTime.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid arrival time",
+      });
+    }
+
+    const bookingDate = new Date(eventDate);
+    
+    // Check if date is valid
+    if (isNaN(bookingDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid event date format",
+      });
+    }
+
+    // Check if the date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (bookingDate < today) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking date cannot be in the past",
+      });
+    }
+
+    // Advanced notice: Bookings must be made at least 24 hours in advance
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (bookingDate < tomorrow) {
+      return res.status(400).json({
+        success: false,
+        message: "Bookings must be made at least 24 hours in advance",
+      });
+    }
+
+    // Check if the chef is already booked for this date
+    const startOfDay = new Date(bookingDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(bookingDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingBooking = await bookingModel.findOne({
+      chefId,
+      eventDate: {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      },
+      status: { $in: ["pending", "confirmed"] },
+    });
+
+    if (existingBooking) {
+      return res.status(409).json({
+        success: false,
+        message: "This chef is already booked for the selected date",
+      });
+    }
+
+    // Verify chef user exists and has chef role
+    const chefUser = await userModel.findById(chefId);
+    if (!chefUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Chef user not found",
+      });
+    }
+
+    if (chefUser.role !== "chef") {
+      return res.status(400).json({
+        success: false,
+        message: "The requested user is not a chef",
+      });
+    }
+
+    // Fetch chef profile to determine rate if not specified
+    const chefProfile = await Profile.findOne({ userId: chefId });
+
+    if (!chefProfile || chefProfile.status !== "approved") {
+      return res.status(400).json({
+        success: false,
+        message: "This chef's profile is not yet approved to accept bookings",
+      });
+    }
+
+    let finalRate = parseFloat(bespokeMenuRate);
+    if (isNaN(finalRate) || finalRate <= 0) {
+      finalRate = chefProfile?.startingPricePerPerson || 0;
+    }
+
+    const guestCount = parseInt(numberOfGuests, 10);
+    if (isNaN(guestCount) || guestCount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Number of guests must be a valid positive number",
+      });
+    }
+
+
+    // Calculation details
+    const menuSubtotal = parseFloat((guestCount * finalRate).toFixed(2));
+    const conciergeServiceFee = parseFloat((menuSubtotal * 0.10).toFixed(2)); // 10%
+    const estimatedTaxes = parseFloat((menuSubtotal * 0.08).toFixed(2)); // 8%
+    const totalAmount = parseFloat((menuSubtotal + conciergeServiceFee + estimatedTaxes).toFixed(2));
+
+    // Minimum Booking Amount check
+    if (chefProfile.minimumBookingAmount && totalAmount < chefProfile.minimumBookingAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `Booking total must meet the chef's minimum booking amount of $${chefProfile.minimumBookingAmount}`,
+      });
+    }
+
+    const newBooking = new bookingModel({
+      chefId,
+      userId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      eventLocation,
+      eventDate: bookingDate,
+      arrivalTime,
+      numberOfGuests: guestCount,
+      bespokeMenuRate: finalRate,
+      menuSubtotal,
+      conciergeServiceFee,
+      estimatedTaxes,
+      totalAmount,
+      status: "pending",
+    });
+
+    const savedBooking = await newBooking.save();
+
+    const populatedBooking = await savedBooking.populate([
+      { path: "chefId", select: "-password -confirmPassword -refreshToken" },
+      { path: "userId", select: "-password -confirmPassword -refreshToken" },
+    ]);
+
+    return res.status(201).json({
+      success: true,
+      message: "Chef booking created successfully",
+      data: populatedBooking,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create chef booking",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get bookings created by the logged-in client
+// @route   GET /api/v1/booking/client
+// @access  Private
+export const getClientBookings = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    const bookings = await bookingModel
+      .find({ userId })
+      .populate({ path: "chefId", select: "-password -confirmPassword -refreshToken" })
+      .populate({ path: "userId", select: "-password -confirmPassword -refreshToken" })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    const total = await bookingModel.countDocuments({ userId });
+
+    return res.status(200).json({
+      success: true,
+      message: "Client bookings retrieved successfully",
+      data: bookings,
+      meta: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        total,
+        limit,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve client bookings",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get bookings received by the logged-in chef
+// @route   GET /api/v1/booking/chef
+// @access  Private (Chef only)
+export const getChefBookings = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    const bookings = await bookingModel
+      .find({ chefId: userId })
+      .populate({ path: "chefId", select: "-password -confirmPassword -refreshToken" })
+      .populate({ path: "userId", select: "-password -confirmPassword -refreshToken" })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    const total = await bookingModel.countDocuments({ chefId: userId });
+
+    return res.status(200).json({
+      success: true,
+      message: "Chef bookings retrieved successfully",
+      data: bookings,
+      meta: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        total,
+        limit,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve chef bookings",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get single booking details
+// @route   GET /api/v1/booking/:id
+// @access  Private
+export const getBookingDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID parameter",
+      });
+    }
+
+    const booking = await bookingModel
+      .findById(id)
+      .populate({ path: "chefId", select: "-password -confirmPassword -refreshToken" })
+      .populate({ path: "userId", select: "-password -confirmPassword -refreshToken" });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    // Verify authorized party: client, chef, or administrator
+    const isClient = booking.userId?._id.toString() === userId.toString();
+    const isChef = booking.chefId?._id.toString() === userId.toString();
+    const isAdmin = req.user?.role === "admin" || req.user?.role === "superAdmin";
+
+    if (!isClient && !isChef && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. You do not have permission to view this booking.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking details retrieved successfully",
+      data: booking,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve booking details",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update booking status
+// @route   PATCH /api/v1/booking/:id/status
+// @access  Private
+export const updateBookingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID parameter",
+      });
+    }
+
+    const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    const booking = await bookingModel.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const isClient = booking.userId.toString() === userId.toString();
+    const isChef = booking.chefId.toString() === userId.toString();
+    const isAdmin = req.user?.role === "admin" || req.user?.role === "superAdmin";
+
+    // Validate update permissions based on state changes
+    if (!isAdmin) {
+      if (status === "confirmed" || status === "completed") {
+        // Only the chef can confirm or complete a booking
+        if (!isChef) {
+          return res.status(403).json({
+            success: false,
+            message: `Only the booked chef can mark this booking as ${status}.`,
+          });
+        }
+      } else if (status === "cancelled") {
+        // Either client or chef can cancel
+        if (!isClient && !isChef) {
+          return res.status(403).json({
+            success: false,
+            message: "You do not have permission to cancel this booking.",
+          });
+        }
+      } else if (status === "pending") {
+        // Bookings are pending by default. Reverting back is not allowed directly
+        return res.status(403).json({
+          success: false,
+          message: "Cannot revert booking status back to pending.",
+        });
+      }
+    }
+
+    booking.status = status;
+    const updatedBooking = await booking.save();
+
+    const populatedBooking = await updatedBooking.populate([
+      { path: "chefId", select: "-password -confirmPassword -refreshToken" },
+      { path: "userId", select: "-password -confirmPassword -refreshToken" },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: `Booking status updated to ${status} successfully`,
+      data: populatedBooking,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update booking status",
+      error: error.message,
+    });
+  }
+};
