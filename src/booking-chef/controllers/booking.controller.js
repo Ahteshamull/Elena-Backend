@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import bookingModel from "../schema/booking.modal.js";
 import userModel from "../../auth/schema/auth.modal.js";
 import Profile from "../../profileSetup/schema/profile.modal.js";
+import Payment from "../../payment/schema/payment.modal.js";
 
 // Helper function to format booking response uniformly
 const formatBookingsWithChefInfo = async (bookingsInput) => {
@@ -51,6 +52,20 @@ const formatBookingsWithChefInfo = async (bookingsInput) => {
     };
   });
 
+  // Fetch payment statuses
+  const bookingIds = bookings.map((b) => {
+    const json = typeof b.toJSON === 'function' ? b.toJSON() : b;
+    return json._id;
+  }).filter(Boolean);
+
+  const payments = await Payment.find({ bookingId: { $in: bookingIds } });
+  const paymentMap = {};
+  const paymentIdMap = {};
+  payments.forEach((payment) => {
+    paymentMap[payment.bookingId.toString()] = payment.status;
+    paymentIdMap[payment.bookingId.toString()] = payment._id;
+  });
+
   const formattedBookings = bookings.map((booking) => {
     const bookingJSON = typeof booking.toJSON === 'function' ? booking.toJSON() : booking;
     const chefIdStr = bookingJSON.chefId?._id?.toString() || bookingJSON.chefId?.toString();
@@ -72,6 +87,8 @@ const formatBookingsWithChefInfo = async (bookingsInput) => {
         numberOfGuests: bookingJSON.numberOfGuests,
         totalAmount: bookingJSON.totalAmount,
         status: bookingJSON.status,
+        paymentStatus: paymentMap[bookingJSON._id.toString()] || "UNPAID",
+        paymentId: paymentIdMap[bookingJSON._id.toString()] || null,
         createdAt: bookingJSON.createdAt,
         updatedAt: bookingJSON.updatedAt,
       },
