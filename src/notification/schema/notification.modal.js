@@ -5,10 +5,9 @@ const NotificationSchema = new mongoose.Schema(
     type: { type: String, required: true }, // e.g. 'case_created', 'collaboration_request'
     title: String,
     message: String,
-    listingId: { type: mongoose.Schema.Types.ObjectId, ref: "Listing" },
-    collaborationId: {
+    bookingId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Collaboration",
+      ref: "Booking",
     },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     receiverId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

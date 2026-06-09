@@ -3,6 +3,7 @@ import bookingModel from "../schema/booking.modal.js";
 import userModel from "../../auth/schema/auth.modal.js";
 import Profile from "../../profileSetup/schema/profile.modal.js";
 import Payment from "../../payment/schema/payment.modal.js";
+import Notification from "../../notification/schema/notification.modal.js";
 
 // Helper function to format booking response uniformly
 const formatBookingsWithChefInfo = async (bookingsInput) => {
@@ -321,6 +322,16 @@ export const createBooking = async (req, res) => {
 
     const savedBooking = await newBooking.save();
 
+    await Notification.create({
+      type: "booking_created",
+      title: "New Booking Request",
+      message: `${firstName} ${lastName} has requested a booking for ${guestCount} guests on ${bookingDate.toDateString()}.`,
+      bookingId: savedBooking._id,
+      createdBy: userId,
+      receiverId: chefId,
+      receiverRole: "chef",
+    });
+
     const populatedBooking = await savedBooking.populate([
       { path: "chefId", select: "-password -confirmPassword -refreshToken" },
       { path: "userId", select: "-password -confirmPassword -refreshToken" },
@@ -625,6 +636,17 @@ export const updateBookingStatus = async (req, res) => {
 
     booking.status = status;
     const updatedBooking = await booking.save();
+
+    // Create notification for the client
+    await Notification.create({
+      type: `booking_${status}`,
+      title: `Booking ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      message: `Your booking request has been ${status}.`,
+      bookingId: updatedBooking._id,
+      createdBy: userId,
+      receiverId: booking.userId,
+      receiverRole: "user",
+    });
 
     const populatedBooking = await updatedBooking.populate([
       { path: "chefId", select: "-password -confirmPassword -refreshToken" },

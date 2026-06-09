@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import userModel from "../../auth/schema/auth.modal.js";
 import Payment from "../schema/payment.modal.js";
 import bookingModel from "../../booking-chef/schema/booking.modal.js";
+import Notification from "../../notification/schema/notification.modal.js";
 
 
 import Stripe from "stripe";
@@ -303,11 +304,22 @@ export const webhook = async (req, res) => {
     const session = event.data.object;
     
     // Find payment
-    const payment = await Payment.findOne({ sessionId: session.id });
+    const payment = await Payment.findOne({ sessionId: session.id }).populate("bookingId");
     if (payment) {
       payment.status = "HOLD"; // Funds are authorized but not captured
       payment.paymentIntentId = session.payment_intent;
       await payment.save();
+
+      // Notify the chef
+      await Notification.create({
+        type: "payment_hold",
+        title: "Payment Received in Escrow",
+        message: `A payment of $${payment.amount} has been successfully held in escrow for your booking.`,
+        bookingId: payment.bookingId?._id || payment.bookingId,
+        createdBy: payment.userId,
+        receiverId: payment.chefId,
+        receiverRole: "chef",
+      });
     }
   }
 
@@ -346,6 +358,31 @@ export const capturePayment = async (req, res) => {
     // Update DB
     payment.status = "SUCCESS";
     await payment.save();
+
+    // Update booking status to completed
+    if (payment.bookingId) {
+      await bookingModel.findByIdAndUpdate(payment.bookingId, { status: "completed" });
+      
+      // Notify client and chef about completion
+      await Notification.create([
+        {
+          type: "booking_completed",
+          title: "Booking Completed",
+          message: "The booking has been successfully completed and the payment has been released.",
+          bookingId: payment.bookingId,
+          receiverId: payment.userId,
+          receiverRole: "user",
+        },
+        {
+          type: "payment_released",
+          title: "Payment Released",
+          message: `Your payout of $${payment.influencer_amount || payment.amount * 0.85} for the completed booking has been released.`,
+          bookingId: payment.bookingId,
+          receiverId: payment.chefId,
+          receiverRole: "chef",
+        }
+      ]);
+    }
 
     return res.status(200).json({
       success: true,
