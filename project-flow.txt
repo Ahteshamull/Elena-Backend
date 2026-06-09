@@ -5,182 +5,95 @@ Tableli Platform — Complete End-to-End Project Flow (বাংলা ভার
 1. Service Provider Journey (Chef)
 A. Registration & Setup
 Authentication (/auth)
-
 Provider প্রথমে registration করবে এবং chef role নির্বাচন করবে।
 
-Features
-Email verification
-OTP verification
-Secure authentication
-JWT-based login system
+Features:
+- Email verification & OTP verification
+- Secure authentication & JWT-based login system
 
 Profile Setup (/profileSetup)
-
 বুকিং রিসিভ করার আগে provider-কে profile setup করতে হবে।
+Profile তথ্য:
+- Full Name & Display Name, About Me, Location (City, Country)
+- Cuisine Specialties & Category (yacht, villa, personal)
+- Menu Details (Starting price)
+- Visual Portfolio (Dish images, Event highlights)
+- Identity Verification
 
-Profile তথ্য
-Full Name & Display Name
-About Me
-Location (City, Country)
-Cuisine Specialties & Category (yacht, villa, event, personal)
-Menu Details (Starting price, Sample Menu)
-Visual Portfolio (Dish images, Event highlights)
-Identity Verification (CV, Government ID, Food Safety Certificate)
-
-Subscription Selection (/subscription)
-
-Provider membership plan নির্বাচন করবে (যদি থাকে)।
+Stripe Onboarding & Escrow Account
+বুকিংয়ের টাকা সরাসরি ব্যাংক একাউন্টে পাওয়ার জন্য Chef-কে তার Stripe Account কানেক্ট করতে হবে (/api/v1/payment/stripe-account-onboarding)।
 
 B. Menu & Service Management
 Menu Creation (/menuCreate)
-
 Provider তার menu বা dishes create করবে।
-
-Example Cuisines/Services
-French Gastronomy
-Italian Classic
-Sushi Course
-Bespoke Menu
-
-Service Details
-প্রতিটি menu-এর জন্য:
-
-Menu Title
-Price per Person
-Courses
-Images
-
-Availability Management
-Provider available dates এবং service windows (Dinner, Brunch, Lunch) setup করবে।
+Service Details:
+- Menu Title, Price per Person, Courses
+- Availability Management (Available dates, service windows)
 
 C. Booking & Client Interaction
 Incoming Bookings (/booking-chef)
-
 Customer booking করলে provider notification পাবে।
-
 Notification System (/notification)
 Provider real-time notification পাবে:
-
-New Booking Request
-Booking Cancelled
-Review Added
+- New Booking Request (booking_created)
+- Payment Held in Escrow (payment_hold)
+- Payment Released (payment_released)
 
 Booking Approval System
 Provider pending bookings দেখতে পারবে এবং:
+- Confirm -> Booking Confirmed
+- Cancel -> Booking Cancelled
 
-Action	Result
-Confirm	Booking Confirmed
-Cancel	Booking Cancelled
-
-Review Management (/review)
-Customer review দিলে provider তা দেখতে পারবে।
-
-Review Data
-Rating
-Comment
-Customer Feedback
-
-D. Performance Tracking
-Dashboard (/dashboard)
-
-Provider business analytics দেখতে পারবে।
-
-Dashboard Metrics
-Analytics	Description
-Revenue Charts	আয়
-Total Bookings	মোট বুকিং
-Profile Views	প্রোফাইল ভিউ
+Real-time Chat System (/conversations & Socket.IO)
+বুকিং কনফার্ম করার আগে বা পরে Chef সরাসরি Customer-এর সাথে রিয়েল-টাইম চ্যাট করতে পারবে। এখানে Typing Indicator এবং Message Seen/Read Receipt ফিচার আছে।
 
 2. Consumer Journey (Customer)
 A. Chef Discovery
 Search System (/search)
-
 Customer nearby chef বা specific cuisine search করবে।
 
-Search Priority Logic
-System verified এবং highly rated chef-দের priority দেবে।
-
-Provider Profile View
-Customer দেখতে পারবে:
-
-Chef's Portfolio
-Menu & Pricing
-Ratings & Reviews
-Available Dates
-
 B. Booking a Chef
-Availability Check
-Customer নির্দিষ্ট date-এ chef-এর availability চেক করবে।
+Availability Check & Booking Creation (/booking-chef)
+Customer guest count, date, arrival time, এবং location দিয়ে booking request submit করবে। সিস্টেম স্বয়ংক্রিয়ভাবে Total Amount ক্যালকুলেট করে বুকিং জেনারেট করবে।
 
-Booking Creation (/booking-chef)
-Customer guest count, date, arrival time, এবং location দিয়ে booking request submit করবে। সিস্টেম স্বয়ংক্রিয়ভাবে Subtotal, Concierge Service Fee (10%), এবং Estimated Taxes (8%) ক্যালকুলেট করে Total Amount জেনারেট করবে। 
-*বুকিং অবশ্যই ২৪ ঘণ্টা আগে করতে হবে এবং শেফের মিনিমাম বুকিং অ্যামাউন্ট রিচ করতে হবে।*
+Secure Payment & Escrow (/payment)
+- Customer স্ট্রাইপ চেকআউটের মাধ্যমে পেমেন্ট করবে।
+- পেমেন্ট হওয়ার পর টাকাটি সরাসরি Chef-এর কাছে না গিয়ে Platform-এর Escrow-তে 'HOLD' হয়ে থাকবে।
 
-Booking Notifications
-Customer notification পাবে যখন provider:
-
-booking confirm করবে
-booking cancel করবে
-
-C. Post-Service Experience
-Reviews & Ratings (/review)
-Service complete হওয়ার পরে customer review দিতে পারবে।
+Real-time Chat & Notifications
+- Customer তার বুকিংয়ের যেকোনো আপডেট (Chef confirm করেছে কি না) নোটিফিকেশনে পাবে।
+- Customer যেকোনো সময় Chef-এর সাথে Socket.io-এর মাধ্যমে লাইভ চ্যাট করতে পারবে।
 
 3. Platform Admin Journey (Super Admin)
 Admin Dashboard (/dashboard)
-
 Admin পুরো platform monitor করতে পারবে।
 
-Admin Metrics
-Metric	Purpose
-Total Revenue	Platform Income
-Total Users	User Count
-Active Chefs	Chef Tracking
-
-Chef Profile Verification
-Admin শেফদের ভেরিফিকেশন ডকুমেন্ট চেক করে প্রোফাইল approve করবেন। Approve না হলে শেফ বুকিং পাবেন না।
+Escrow Release & Payout System (/payment/capture/:paymentId)
+- Chef তার সার্ভিস কমপ্লিট করার পর Admin ম্যানুয়ালি টাকা রিলিজ করবে।
+- রিলিজ করার সাথে সাথে স্বয়ংক্রিয়ভাবে:
+  - 15% Platform Commission এডমিনের একাউন্টে জমা হবে।
+  - 85% টাকা সরাসরি Chef-এর Stripe একাউন্টে (Bank-এ) ট্রান্সফার হয়ে যাবে।
+  - ডাটাবেজে স্ট্যাটাস 'SUCCESS' হবে এবং বুকিং 'completed' হয়ে যাবে।
 
 Moderation System (/report)
-Admin reported content manage করবে।
+Admin reported content manage করবে এবং শেফদের প্রোফাইল Approve করবে।
 
 4. Technical Infrastructure (Behind the Scenes)
-Database Layer (src/config/database)
+Database Layer (MongoDB + Mongoose)
+- Models: User, Profile, Booking, Payment, Notification, Conversation, Message, etc.
 
-MongoDB + Mongoose ব্যবহার করা হয়েছে।
+Authentication Middleware
+- Role-based Access Control (RBAC): Only Chef can accept bookings. Only Users can book. Only Admins can release escrow payments.
 
-Core Responsibilities
-System	Responsibility
-MongoDB	Data Storage
-Mongoose	Relationship Handling
-JWT	Authentication
-Middleware	Access Control
+Payment Gateway (Stripe)
+- Stripe Connect (Destination Charges)
+- Stripe Webhooks (checkout.session.completed) পেমেন্ট অটোমেটিক্যালি ট্র্যাক করার জন্য।
 
-Authentication Middleware (src/helper/middlewares)
-এই layer নিশ্চিত করে:
+Real-time Communication (Socket.IO)
+- Private 1-to-1 Messaging
+- "Typing...", "Stop Typing" Events
+- "Mark as Read" & "Seen" Receipts
+- REST API for fetching Chat History (Inbox & Messages)
 
-User শুধু নিজের data access করতে পারবে
-Unauthorized request block হবে
-Chef specific route শুধুমাত্র chef access করতে পারবে
-
-Payment Gateway (src/payment)
-Stripe ব্যবহার করা হয়েছে পেমেন্ট প্রসেসিংয়ের জন্য।
-
-Real-time Communication (src/socket)
-Socket system ব্যবহার করা হয়েছে instant notifications এবং live messaging-এর জন্য।
-
-Overall System Flow
-Customer
-   ↓
-Search Chef
-   ↓
-Book Chef (with Date, Guests & Invoice Auto-calc)
-   ↓
-Chef Confirms Booking
-   ↓
-Notification System
-   ↓
-Service Completed
-   ↓
-Review & Rating
-   ↓
-Analytics Updated
+Overall System Flow:
+Customer Search Chef -> Book Chef -> Customer Makes Payment -> Payment is "HOLD" (Escrow) -> Chef Notified & Chat Opens -> Chef Completes Job -> Admin Captures Payment -> 15% Platform Fee / 85% to Chef -> Booking Completed -> Notification Sent.
