@@ -52,23 +52,7 @@ const bookingSchema = new Schema(
       type: Number,
       required: true,
     },
-    bespokeMenuRate: {
-      type: Number,
-      default: 0,
-    },
-    menuSubtotal: {
-      type: Number,
-      default: 0,
-    },
-    conciergeServiceFee: {
-      type: Number,
-      default: 0,
-    },
-    estimatedTaxes: {
-      type: Number,
-      default: 0,
-    },
-    totalAmount: {
+ totalAmount: {
       type: Number,
       default: 0,
     },

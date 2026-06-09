@@ -83,6 +83,13 @@ const userSchema = new Schema(
       type: String,
       trim: true,
     },
+    stripeAccountId: {
+      type: String,
+    },
+    isStripeConnected: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

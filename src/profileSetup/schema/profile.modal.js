@@ -41,6 +41,12 @@ const profileSchema = new Schema(
 
     // Section 03: Menu & Pricing
     startingPricePerPerson: { type: Number },
+    guestPricingTiers: [{
+      minGuests: { type: Number },
+      maxGuests: { type: Number }, // Optional. If not provided, it implies up to infinity (e.g. 40+)
+      pricePerPerson: { type: Number },
+      isCustomQuote: { type: Boolean, default: false }
+    }],
     sampleMenuTitle: { type: String },
     minimumBookingAmount: { type: Number },
     menuDescription: { type: String },

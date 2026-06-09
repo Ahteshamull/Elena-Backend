@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import userModel from "../../auth/schema/auth.modal.js";
 import Payment from "../schema/payment.modal.js";
+import bookingModel from "../../booking-chef/schema/booking.modal.js";
 
 
 import Stripe from "stripe";
@@ -146,6 +147,142 @@ export const stripeAccountOnboarding = async (req, res) => {
 };
 
 
+export const createCheckoutSession = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const userId = req.user?.id || req.user?._id || req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+
+    if (!stripe) {
+      return res.status(500).json({ success: false, message: "Stripe not configured" });
+    }
+
+    const booking = await bookingModel.findById(bookingId).populate("chefId");
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    // Verify user owns the booking
+    if (booking.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "You can only pay for your own bookings" });
+    }
+
+    // Verify chef has Stripe
+    const chef = booking.chefId;
+    if (!chef.stripeAccountId) {
+      return res.status(400).json({ success: false, message: "The chef has not set up their payment account yet." });
+    }
+
+    // Amount calculations
+    const totalAmount = booking.totalAmount;
+    const adminCut = totalAmount * 0.15;
+    const chefCut = totalAmount - adminCut;
+
+    const totalAmountInCents = Math.round(totalAmount * 100);
+    const adminCutInCents = Math.round(adminCut * 100);
+
+    // Create a Checkout Session
+    const frontendUrl = "https://nearly-combo-consult-exposed.trycloudflare.com/api/v1";
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `Booking with Chef ${chef.userName}`,
+              description: `Booking ID: ${booking._id}`,
+            },
+            unit_amount: totalAmountInCents,
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        capture_method: "manual",
+        transfer_data: {
+          destination: chef.stripeAccountId,
+        },
+        application_fee_amount: adminCutInCents,
+        metadata: {
+          bookingId: booking._id.toString(),
+          chefId: chef._id.toString(),
+          userId: userId.toString(),
+        },
+      },
+      success_url: `${frontendUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/payment/cancel`,
+      metadata: {
+        bookingId: booking._id.toString(),
+        chefId: chef._id.toString(),
+        userId: userId.toString(),
+      },
+    });
+
+    // Save pending payment record
+    const payment = new Payment({
+      amount: totalAmount,
+      currency: "usd",
+      sessionId: session.id,
+      status: "PENDING",
+      provider: "STRIPE",
+      userId,
+      chefId: chef._id,
+      bookingId: booking._id,
+      admin_amount: adminCut,
+      influencer_amount: chefCut,
+    });
+
+    await payment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Checkout session created successfully",
+      data: {
+        sessionId: session.id,
+        url: session.url,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating checkout session:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error creating checkout session",
+      error: error.message,
+    });
+  }
+};
+
+export const paymentSuccess = async (req, res) => {
+  res.send(`
+    <html>
+      <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+        <h1 style="color: #4CAF50;">Payment Successful!</h1>
+        <p>Your payment has been held successfully.</p>
+        <p>Session ID: ${req.query.session_id}</p>
+        <p>You can close this window now.</p>
+      </body>
+    </html>
+  `);
+};
+
+export const paymentCancel = async (req, res) => {
+  res.send(`
+    <html>
+      <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+        <h1 style="color: #f44336;">Payment Cancelled</h1>
+        <p>You cancelled the checkout process.</p>
+        <p>You can close this window now.</p>
+      </body>
+    </html>
+  `);
+};
+
 export const webhook = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -161,14 +298,68 @@ export const webhook = async (req, res) => {
   }
 
   console.log(`Received stripe webhook event: ${event.type}`);
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    
+    // Find payment
+    const payment = await Payment.findOne({ sessionId: session.id });
+    if (payment) {
+      payment.status = "HOLD"; // Funds are authorized but not captured
+      payment.paymentIntentId = session.payment_intent;
+      await payment.save();
+    }
+  }
+
   res.json({ received: true });
 };
 
 export const capturePayment = async (req, res) => {
-  return res.status(503).json({
-    message: "Payment capture is currently disabled",
-    reason: "Collaboration features have been removed",
-  });
+  try {
+    const { paymentId } = req.params;
+    
+    // Ensure user is admin/superadmin
+    const userRole = req.user?.role;
+    if (userRole !== "admin" && userRole !== "superAdmin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admin can release payments",
+      });
+    }
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      return res.status(404).json({ success: false, message: "Payment not found" });
+    }
+
+    if (payment.status !== "HOLD") {
+      return res.status(400).json({ success: false, message: `Payment cannot be captured. Current status is ${payment.status}` });
+    }
+
+    if (!payment.paymentIntentId) {
+      return res.status(400).json({ success: false, message: "Payment intent ID is missing" });
+    }
+
+    // Capture the payment intent
+    const intent = await stripe.paymentIntents.capture(payment.paymentIntentId);
+
+    // Update DB
+    payment.status = "SUCCESS";
+    await payment.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment released to chef successfully",
+      data: payment,
+    });
+  } catch (error) {
+    console.error("Error capturing payment:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error capturing payment",
+      error: error.message,
+    });
+  }
 };
 
 export const getPaymentStatus = async (req, res) => {

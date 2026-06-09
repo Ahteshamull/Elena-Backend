@@ -30,7 +30,8 @@ const PaymentSchema = new Schema(
       enum: [
         "PENDING",
         "SUCCESS",
-        "IN_PROGRESS || HOLD",
+        "IN_PROGRESS",
+        "HOLD",
         "FAILED",
         "CANCELLED",
       ], // adjust to your PaymentStatus enum
@@ -58,13 +59,19 @@ const PaymentSchema = new Schema(
       ref: "User",
       required: true,
     },
+    chefId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    bookingId: {
+      type: Schema.Types.ObjectId,
+      ref: "Booking",
+      required: true,
+    },
     title: {
       type: Schema.Types.ObjectId,
       ref: "Collaboration",
-    },
-    selectInfluencerOrHost: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
     },
   },
   {

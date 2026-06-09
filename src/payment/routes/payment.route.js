@@ -3,7 +3,7 @@ import express from "express";
 
 import {
   authenticateToken,
-  requireHostRole,
+  requireChefRole,
 } from "../../helper/middlewares/auth.middleware.js";
 const router = Router();
 
@@ -15,15 +15,17 @@ import {
   stripeAccountOnboarding,
   userSpendingGrowth,
   adminEarnings,
+  createCheckoutSession,
+  paymentSuccess,
+  paymentCancel,
 } from "../controller/payment.controller.js";
-import { requireHostOrInfluencerRole } from "../../helper/middlewares/role.middleware.js";
 import superAdminMiddleware from "../../helper/middlewares/superAdminMiddleware.js";
 
 // localhost:8005/api/v1/payment/stripe-account-onboarding
 router.post(
   "/stripe-account-onboarding",
   authenticateToken,
-  requireHostOrInfluencerRole,
+  requireChefRole,
   stripeAccountOnboarding,
 );
 
@@ -37,9 +39,19 @@ router.post("/webhook", webhook);
 router.post(
   "/capture/:paymentId",
   authenticateToken,
-  requireHostRole,
   capturePayment,
 );
+
+// localhost:8005/api/v1/payment/checkout/:bookingId
+router.post(
+  "/checkout/:bookingId",
+  authenticateToken,
+  createCheckoutSession,
+);
+
+// Payment redirect routes
+router.get("/success", paymentSuccess);
+router.get("/cancel", paymentCancel);
 
 // localhost:8005/api/v1/payment/status/:paymentId
 router.get("/status/:paymentId", authenticateToken, getPaymentStatus);

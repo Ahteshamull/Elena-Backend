@@ -3,6 +3,91 @@ import bookingModel from "../schema/booking.modal.js";
 import userModel from "../../auth/schema/auth.modal.js";
 import Profile from "../../profileSetup/schema/profile.modal.js";
 
+// Helper function to format booking response uniformly
+const formatBookingsWithChefInfo = async (bookingsInput) => {
+  if (!bookingsInput || (Array.isArray(bookingsInput) && bookingsInput.length === 0)) {
+    return bookingsInput;
+  }
+  
+  const isArray = Array.isArray(bookingsInput);
+  const bookings = isArray ? bookingsInput : [bookingsInput];
+
+  const chefIds = [
+    ...new Set(
+      bookings.map((b) => {
+        const json = typeof b.toJSON === 'function' ? b.toJSON() : b;
+        return json.chefId?._id?.toString() || json.chefId?.toString();
+      }).filter(Boolean)
+    ),
+  ];
+
+  const profiles = await Profile.find({ userId: { $in: chefIds } });
+  const profileMap = {};
+  profiles.forEach((p) => {
+    profileMap[p.userId.toString()] = p.toJSON();
+  });
+
+  const objectIdChefIds = chefIds.map(
+    (id) => new mongoose.Types.ObjectId(id)
+  );
+  const chefBookingStats = await bookingModel.aggregate([
+    { $match: { chefId: { $in: objectIdChefIds } } },
+    {
+      $group: {
+        _id: "$chefId",
+        totalBookings: { $sum: 1 },
+        completedBookings: {
+          $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+        },
+      },
+    },
+  ]);
+
+  const statsMap = {};
+  chefBookingStats.forEach((stat) => {
+    statsMap[stat._id.toString()] = {
+      totalBookings: stat.totalBookings,
+      completedBookings: stat.completedBookings,
+    };
+  });
+
+  const formattedBookings = bookings.map((booking) => {
+    const bookingJSON = typeof booking.toJSON === 'function' ? booking.toJSON() : booking;
+    const chefIdStr = bookingJSON.chefId?._id?.toString() || bookingJSON.chefId?.toString();
+    const chefProfile = chefIdStr ? profileMap[chefIdStr] : null;
+    const stats = chefIdStr
+      ? statsMap[chefIdStr]
+      : { totalBookings: 0, completedBookings: 0 };
+
+    return {
+      bookingDetails: {
+        _id: bookingJSON._id,
+        firstName: bookingJSON.firstName,
+        lastName: bookingJSON.lastName,
+        email: bookingJSON.email,
+        phone: bookingJSON.phone,
+        eventLocation: bookingJSON.eventLocation,
+        eventDate: bookingJSON.eventDate,
+        arrivalTime: bookingJSON.arrivalTime,
+        numberOfGuests: bookingJSON.numberOfGuests,
+        totalAmount: bookingJSON.totalAmount,
+        status: bookingJSON.status,
+        createdAt: bookingJSON.createdAt,
+        updatedAt: bookingJSON.updatedAt,
+      },
+      clientInfo: bookingJSON.userId,
+      chefInfo: {
+        ...(bookingJSON.chefId || {}),
+        totalBookingsReceived: stats.totalBookings || 0,
+        totalBookingsCompleted: stats.completedBookings || 0,
+        profile: chefProfile,
+      },
+    };
+  });
+
+  return isArray ? formattedBookings : formattedBookings[0];
+};
+
 // @desc    Create a new chef booking
 // @route   POST /api/v1/booking/:chefId
 // @access  Private
@@ -34,7 +119,6 @@ export const createBooking = async (req, res) => {
       eventDate,
       arrivalTime,
       numberOfGuests,
-      bespokeMenuRate,
     } = req.body;
 
     // Validate request fields
@@ -78,9 +162,9 @@ export const createBooking = async (req, res) => {
         message: "Please provide a valid phone number",
       });
     }
-    
+
     // Arrival time basic validation
-    if (typeof arrivalTime !== 'string' || arrivalTime.trim().length === 0) {
+    if (typeof arrivalTime !== "string" || arrivalTime.trim().length === 0) {
       return res.status(400).json({
         success: false,
         message: "Please provide a valid arrival time",
@@ -88,7 +172,7 @@ export const createBooking = async (req, res) => {
     }
 
     const bookingDate = new Date(eventDate);
-    
+
     // Check if date is valid
     if (isNaN(bookingDate.getTime())) {
       return res.status(400).json({
@@ -120,7 +204,7 @@ export const createBooking = async (req, res) => {
     // Check if the chef is already booked for this date
     const startOfDay = new Date(bookingDate);
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     const endOfDay = new Date(bookingDate);
     endOfDay.setHours(23, 59, 59, 999);
 
@@ -166,11 +250,6 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    let finalRate = parseFloat(bespokeMenuRate);
-    if (isNaN(finalRate) || finalRate <= 0) {
-      finalRate = chefProfile?.startingPricePerPerson || 0;
-    }
-
     const guestCount = parseInt(numberOfGuests, 10);
     if (isNaN(guestCount) || guestCount <= 0) {
       return res.status(400).json({
@@ -179,19 +258,33 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    const minimumFee = chefProfile?.minimumBookingAmount || 0;
+    let perPersonRate = chefProfile?.startingPricePerPerson || 0;
+    let isCustomQuote = false;
 
-    // Calculation details
-    const menuSubtotal = parseFloat((guestCount * finalRate).toFixed(2));
-    const conciergeServiceFee = parseFloat((menuSubtotal * 0.10).toFixed(2)); // 10%
-    const estimatedTaxes = parseFloat((menuSubtotal * 0.08).toFixed(2)); // 8%
-    const totalAmount = parseFloat((menuSubtotal + conciergeServiceFee + estimatedTaxes).toFixed(2));
-
-    // Minimum Booking Amount check
-    if (chefProfile.minimumBookingAmount && totalAmount < chefProfile.minimumBookingAmount) {
-      return res.status(400).json({
-        success: false,
-        message: `Booking total must meet the chef's minimum booking amount of $${chefProfile.minimumBookingAmount}`,
+    // Determine rate from guest-count pricing tiers if available
+    if (
+      chefProfile?.guestPricingTiers &&
+      chefProfile.guestPricingTiers.length > 0
+    ) {
+      const applicableTier = chefProfile.guestPricingTiers.find((tier) => {
+        const matchesMin = guestCount >= tier.minGuests;
+        const matchesMax = tier.maxGuests ? guestCount <= tier.maxGuests : true;
+        return matchesMin && matchesMax;
       });
+
+      if (applicableTier) {
+        if (applicableTier.isCustomQuote) {
+          isCustomQuote = true;
+        } else {
+          perPersonRate = applicableTier.pricePerPerson || 0;
+        }
+      }
+    }
+
+    let totalAmount = 0;
+    if (!isCustomQuote) {
+      totalAmount = minimumFee + guestCount * perPersonRate;
     }
 
     const newBooking = new bookingModel({
@@ -205,10 +298,6 @@ export const createBooking = async (req, res) => {
       eventDate: bookingDate,
       arrivalTime,
       numberOfGuests: guestCount,
-      bespokeMenuRate: finalRate,
-      menuSubtotal,
-      conciergeServiceFee,
-      estimatedTaxes,
       totalAmount,
       status: "pending",
     });
@@ -220,10 +309,12 @@ export const createBooking = async (req, res) => {
       { path: "userId", select: "-password -confirmPassword -refreshToken" },
     ]);
 
+    const formattedResponse = await formatBookingsWithChefInfo(populatedBooking);
+
     return res.status(201).json({
       success: true,
       message: "Chef booking created successfully",
-      data: populatedBooking,
+      data: formattedResponse,
     });
   } catch (error) {
     return res.status(500).json({
@@ -240,6 +331,7 @@ export const createBooking = async (req, res) => {
 export const getClientBookings = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
+    const { status } = req.params;
 
     if (!userId) {
       return res.status(401).json({
@@ -252,26 +344,47 @@ export const getClientBookings = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
 
+    const query = { userId };
+
+    if (status) {
+      const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+      const lowerStatus = status.toLowerCase();
+      if (!validStatuses.includes(lowerStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status parameter. Must be one of: ${validStatuses.join(", ")}`,
+        });
+      }
+      query.status = lowerStatus;
+    }
+
     const bookings = await bookingModel
-      .find({ userId })
-      .populate({ path: "chefId", select: "-password -confirmPassword -refreshToken" })
-      .populate({ path: "userId", select: "-password -confirmPassword -refreshToken" })
+      .find(query)
+      .populate({
+        path: "chefId",
+        select: "-password -confirmPassword -refreshToken",
+      })
+      .populate({
+        path: "userId",
+        select: "-password -confirmPassword -refreshToken",
+      })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    const total = await bookingModel.countDocuments({ userId });
+    const formattedBookings = await formatBookingsWithChefInfo(bookings);
+    const total = await bookingModel.countDocuments(query);
 
     return res.status(200).json({
       success: true,
       message: "Client bookings retrieved successfully",
-      data: bookings,
       meta: {
         currentPage: page,
         totalPages: Math.ceil(total / limit),
         total,
         limit,
       },
+      data: formattedBookings,
     });
   } catch (error) {
     return res.status(500).json({
@@ -288,6 +401,7 @@ export const getClientBookings = async (req, res) => {
 export const getChefBookings = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
+    const { status } = req.params;
 
     if (!userId) {
       return res.status(401).json({
@@ -300,26 +414,47 @@ export const getChefBookings = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
 
+    const query = { chefId: userId };
+
+    if (status) {
+      const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+      const lowerStatus = status.toLowerCase();
+      if (!validStatuses.includes(lowerStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status parameter. Must be one of: ${validStatuses.join(", ")}`,
+        });
+      }
+      query.status = lowerStatus;
+    }
+
     const bookings = await bookingModel
-      .find({ chefId: userId })
-      .populate({ path: "chefId", select: "-password -confirmPassword -refreshToken" })
-      .populate({ path: "userId", select: "-password -confirmPassword -refreshToken" })
+      .find(query)
+      .populate({
+        path: "chefId",
+        select: "-password -confirmPassword -refreshToken",
+      })
+      .populate({
+        path: "userId",
+        select: "-password -confirmPassword -refreshToken",
+      })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    const total = await bookingModel.countDocuments({ chefId: userId });
+    const formattedBookings = await formatBookingsWithChefInfo(bookings);
+    const total = await bookingModel.countDocuments(query);
 
     return res.status(200).json({
       success: true,
       message: "Chef bookings retrieved successfully",
-      data: bookings,
       meta: {
         currentPage: page,
         totalPages: Math.ceil(total / limit),
         total,
         limit,
       },
+      data: formattedBookings,
     });
   } catch (error) {
     return res.status(500).json({
@@ -354,8 +489,14 @@ export const getBookingDetails = async (req, res) => {
 
     const booking = await bookingModel
       .findById(id)
-      .populate({ path: "chefId", select: "-password -confirmPassword -refreshToken" })
-      .populate({ path: "userId", select: "-password -confirmPassword -refreshToken" });
+      .populate({
+        path: "chefId",
+        select: "-password -confirmPassword -refreshToken",
+      })
+      .populate({
+        path: "userId",
+        select: "-password -confirmPassword -refreshToken",
+      });
 
     if (!booking) {
       return res.status(404).json({
@@ -367,19 +508,23 @@ export const getBookingDetails = async (req, res) => {
     // Verify authorized party: client, chef, or administrator
     const isClient = booking.userId?._id.toString() === userId.toString();
     const isChef = booking.chefId?._id.toString() === userId.toString();
-    const isAdmin = req.user?.role === "admin" || req.user?.role === "superAdmin";
+    const isAdmin =
+      req.user?.role === "admin" || req.user?.role === "superAdmin";
 
     if (!isClient && !isChef && !isAdmin) {
       return res.status(403).json({
         success: false,
-        message: "Access denied. You do not have permission to view this booking.",
+        message:
+          "Access denied. You do not have permission to view this booking.",
       });
     }
+
+    const formattedBooking = await formatBookingsWithChefInfo(booking);
 
     return res.status(200).json({
       success: true,
       message: "Booking details retrieved successfully",
-      data: booking,
+      data: formattedBooking,
     });
   } catch (error) {
     return res.status(500).json({
@@ -431,7 +576,8 @@ export const updateBookingStatus = async (req, res) => {
 
     const isClient = booking.userId.toString() === userId.toString();
     const isChef = booking.chefId.toString() === userId.toString();
-    const isAdmin = req.user?.role === "admin" || req.user?.role === "superAdmin";
+    const isAdmin =
+      req.user?.role === "admin" || req.user?.role === "superAdmin";
 
     // Validate update permissions based on state changes
     if (!isAdmin) {
@@ -468,15 +614,80 @@ export const updateBookingStatus = async (req, res) => {
       { path: "userId", select: "-password -confirmPassword -refreshToken" },
     ]);
 
+    const formattedResponse = await formatBookingsWithChefInfo(populatedBooking);
+
     return res.status(200).json({
       success: true,
       message: `Booking status updated to ${status} successfully`,
-      data: populatedBooking,
+      data: formattedResponse,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: "Failed to update booking status",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get all bookings (Admin/Superadmin)
+// @route   GET /api/v1/booking
+// @access  Private (Admin/SuperAdmin only)
+export const getAllBookings = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    const userRole = req.user?.role;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    if (userRole !== "admin" && userRole !== "superAdmin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Admin or SuperAdmin role required.",
+      });
+    }
+
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    const bookings = await bookingModel
+      .find({})
+      .populate({
+        path: "chefId",
+        select: "-password -confirmPassword -refreshToken",
+      })
+      .populate({
+        path: "userId",
+        select: "-password -confirmPassword -refreshToken",
+      })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    const formattedBookings = await formatBookingsWithChefInfo(bookings);
+    const total = await bookingModel.countDocuments();
+
+    return res.status(200).json({
+      success: true,
+      message: "All bookings retrieved successfully",
+      meta: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        total,
+        limit,
+      },
+      data: formattedBookings,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve bookings",
       error: error.message,
     });
   }
