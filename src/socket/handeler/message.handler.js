@@ -12,23 +12,32 @@ export const handleSingleSendMessage = async (
  
     const userModal = (await import("../../auth/schema/auth.modal.js")).default;
     const sender = await userModal.findById(currentUserId);
-    if (!sender || (sender.role !== "host" && sender.role !== "influencer")) {
+    if (!sender || (sender.role !== "user" && sender.role !== "chef")) {
       socket.emit("auth-error", {
         success: false,
-        message: "Only hosts and influencers can send messages",
+        message: "Only users and chefs can send messages",
       });
       return;
     }
 
-    // Verify receiver exists and is host or influencer
+    // Verify receiver exists
     const receiver = await userModal.findById(data.receiverId);
     if (
       !receiver ||
-      (receiver.role !== "host" && receiver.role !== "influencer")
+      (receiver.role !== "user" && receiver.role !== "chef")
     ) {
       socket.emit("auth-error", {
         success: false,
-        message: "Receiver must be a host or influencer",
+        message: "Receiver must be a user or chef",
+      });
+      return;
+    }
+
+    // Prevent same-role messaging
+    if (sender.role === receiver.role) {
+      socket.emit("auth-error", {
+        success: false,
+        message: "Users can only message chefs, and chefs can only message users",
       });
       return;
     }

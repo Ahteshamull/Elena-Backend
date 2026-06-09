@@ -46,10 +46,10 @@ export const initializeSocket = (server) => {
       return;
     }
 
-    // Only allow hosts and influencers to connect
-    if (currentUser.role !== "host" && currentUser.role !== "influencer") {
+    // Only allow users and chefs to connect
+    if (currentUser.role !== "user" && currentUser.role !== "chef") {
       socket.emit("auth-error", {
-        message: "Only hosts and influencers can use messaging",
+        message: "Only users and chefs can use messaging",
       });
       socket.disconnect();
       return;

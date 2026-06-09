@@ -1,6 +1,28 @@
+import Conversation from "../schema/conversition.modal.js";
+
 class ConversationService {
   static async getConversation(userId, query) {
-    return [];
+    const page = parseInt(query?.page, 10) || 1;
+    const limit = parseInt(query?.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+
+    const conversations = await Conversation.find({ participants: userId })
+      .populate("participants", "userName email image role status") // Select only necessary fields
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Conversation.countDocuments({ participants: userId });
+
+    return {
+      data: conversations,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
 

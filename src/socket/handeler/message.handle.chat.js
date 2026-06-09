@@ -62,6 +62,24 @@ const handleChatEvents = async (io, socket, currentUserId) => {
       .emit("user-stop-typing", { conversationId, userId });
   });
 
+  // Mark messages as read
+  socket.on("mark-messages-read", async (data) => {
+    try {
+      const { conversationId } = data;
+      if (!conversationId) return;
+
+      await MessageService.markMessagesAsRead(conversationId, currentUserId);
+      
+      // Notify the other user in the conversation that messages were read
+      socket.to(conversationId).emit("messages-marked-read", {
+        conversationId,
+        readByUserId: currentUserId
+      });
+    } catch (err) {
+      console.error("Error marking messages as read:", err);
+    }
+  });
+
   socket.on("single-chat-send-message", (data) =>
     handleSingleSendMessage(io, socket, currentUserId, data)
   );
