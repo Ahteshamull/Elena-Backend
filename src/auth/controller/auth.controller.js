@@ -10,6 +10,7 @@ import fs from "fs";
 import path from "path";
 import Payment from "../../payment/schema/payment.modal.js";
 import Notification from "../../notification/schema/notification.modal.js";
+import Profile from "../../profileSetup/schema/profile.modal.js";
 
 export const createUser = async (req, res) => {
   let bodyData = req.body || {};
@@ -190,16 +191,30 @@ export const verifyRegistration = async (req, res) => {
   delete userData.registrationOtp;
   delete userData.otpExpiry;
 
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user);
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  };
+
   const message =
     user.role === "chef"
       ? "Account verified and created successfully! You need to setup your profile. Once the admin approves your account, you will be able to log in."
       : "Account verified and created successfully! You can now log in.";
 
-  return res.status(201).json({
-    success: true,
-    message,
-    data: userData,
-  });
+  return res
+    .status(201)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json({
+      success: true,
+      message,
+      data: userData,
+      accessToken,
+      refreshToken,
+    });
 };
 
 export const getMyProfile = async (req, res) => {
@@ -276,12 +291,15 @@ export const login = async (req, res) => {
     }
 
     // Block unapproved accounts
-    if (!existingUser.isApprovedByAdmin) {
-      return res.status(403).json({
-        error: true,
-        message:
-          "Your account is pending admin approval. You cannot log in yet.",
-      });
+    if (existingUser.role === "chef" && !existingUser.isApprovedByAdmin) {
+      const profile = await Profile.findOne({ userId: existingUser._id });
+      if (profile && profile.isProfileCompleted) {
+        return res.status(403).json({
+          error: true,
+          message:
+            "Your account is pending admin approval. You cannot log in yet.",
+        });
+      }
     }
 
     // Password check
@@ -580,7 +598,7 @@ export const ResendOtp = async (req, res) => {
   }
 };
 
-const generateAccessAndRefreshToken = async (user) => {
+async function generateAccessAndRefreshToken(user) {
   const accessToken = jwt.sign(
     {
       _id: user._id,
@@ -605,7 +623,7 @@ const generateAccessAndRefreshToken = async (user) => {
   await user.save({ validateBeforeSave: false });
 
   return { accessToken, refreshToken };
-};
+}
 
 export const refreshAccessToken = async (req, res) => {
   const incomingRefreshToken =

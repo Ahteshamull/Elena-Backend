@@ -39,6 +39,16 @@ export const upsertProfile = async (req, res) => {
       });
     }
 
+    // Check if profile is already completed
+    const existingProfile = await Profile.findOne({ userId });
+    if (existingProfile && existingProfile.isProfileCompleted) {
+      return res.status(400).json({
+        success: false,
+        error: true,
+        message: "You have already set up your profile. Please use the update-profile endpoint to make changes.",
+      });
+    }
+
     let bodyData = req.body || {};
 
     // Support sending data as a JSON string in a 'data' field (common for form-data)

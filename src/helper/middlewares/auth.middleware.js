@@ -5,7 +5,7 @@ import Admin from "../../admin/schema/admin.modal.js";
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const bearerToken = authHeader && authHeader.split(" ")[1];
-  const cookieToken = req.cookies?.token;
+  const cookieToken = req.cookies?.token || req.cookies?.accessToken;
 
   const token = bearerToken || cookieToken;
 
