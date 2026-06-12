@@ -57,7 +57,7 @@ const listNotifications = async (req, res) => {
 const markNotification = async (req, res) => {
   try {
     const { id } = req.params;
-    const { isRead } = req.body;
+    const isRead = req.body?.isRead ?? true;
     const userId = req.user?.id || req.user?._id;
 
     const notification = await Notification.findOneAndUpdate(
@@ -89,7 +89,7 @@ const markNotification = async (req, res) => {
 
 const markAllNotifications = async (req, res) => {
   try {
-    const { isRead } = req.body;
+    const isRead = req.body?.isRead ?? true;
     const userId = req.user?.id || req.user?._id;
 
     await Notification.updateMany({ receiverId: userId }, { isRead });

@@ -8,11 +8,12 @@ import {
   errorCheck,
 } from "../../helper/middlewares/imageControlMiddleware.js";
 import {
-  upsertProfile,
-  updateProfile,
   getMyProfile,
   getProfileByUserId,
+  updateProfile,
   updateProfileStatus,
+  upsertProfile,
+  getPendingProfiles,
 } from "../controllers/profile.controller.js";
 
 const router = express.Router();
@@ -58,6 +59,15 @@ router.patch(
   authenticateToken,
   requireSuperAdminOrAdminRole,
   updateProfileStatus,
+);
+
+
+// get all chefs status setup profile pending 
+router.get(
+  "/admin/pending-profiles",
+  authenticateToken,
+  requireSuperAdminOrAdminRole,
+  getPendingProfiles
 );
 
 export default router;

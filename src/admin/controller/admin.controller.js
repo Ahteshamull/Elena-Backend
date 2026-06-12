@@ -9,6 +9,8 @@ import otpService from "../../helper/helpers/otpService.js";
 import PasswordReset from "../../auth/schema/passwordReset.modal.js";
 import sendOtp from "../../helper/helpers/sendOtp.js";
 import userModel from "../../auth/schema/auth.modal.js";
+import Payment from "../../payment/schema/payment.modal.js";
+import Booking from "../../booking-chef/schema/booking.modal.js";
 
 // Generate JWT Token
 const generateToken = (id, role) => {
@@ -566,6 +568,124 @@ const approveUser = async (req, res) => {
   }
 };
 
+const resendOtpAdmin = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email required" });
+    }
+
+    const reset = await PasswordReset.findOne({ email });
+    if (!reset) {
+      return res.status(404).json({ message: "OTP request not found" });
+    }
+
+    if (reset.verified) {
+      return res
+        .status(400)
+        .json({ message: "OTP already verified. Please reset password" });
+    }
+
+    if (reset.verifiedAt && new Date(Date.now() - 30 * 60 * 1000) > reset.verifiedAt) {
+      return res
+        .status(400)
+        .json({ message: "OTP verification expired. Please request new OTP" });
+    }
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+    reset.otp = otp;
+    reset.otpExpiry = new Date(Date.now() + 30 * 60 * 1000);
+    reset.verified = false;
+    await reset.save();
+
+    await sendOtp(email, otp);
+
+    res.json({
+      success: true,
+      message: "OTP resent successfully",
+      data: {
+        email,
+        otpSentAt: reset.otpSentAt,
+        otpExpiry: reset.otpExpiry,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Server error while resending OTP",
+    });
+  }
+};
+
+const adminOverview = async (req, res) => {
+  try {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    
+    const [totalRevenueResult, totalBookings, totalChefs, totalUsers, monthlyChefs, monthlyUsers, recentPayments, recentBookings] = await Promise.all([
+      Payment.aggregate([
+        { $match: { status: 'SUCCESS' } },
+        { $group: { _id: null, total: { $sum: '$admin_amount' } } }
+      ]),
+      Booking.countDocuments(),
+      userModel.countDocuments({ role: 'chef' }),
+      userModel.countDocuments({ role: 'user' }),
+      userModel.countDocuments({ role: 'chef', createdAt: { $gte: startOfMonth } }),
+      userModel.countDocuments({ role: 'user', createdAt: { $gte: startOfMonth } }),
+      Payment.find().populate('userId', 'userName').sort({ createdAt: -1 }).limit(5),
+      Booking.find().populate('userId', 'userName').populate('chefId', 'userName').sort({ createdAt: -1 }).limit(5)
+    ]);
+
+    const totalAdminRevenue = totalRevenueResult.length > 0 ? totalRevenueResult[0].total : 0;
+    const userRatio = totalUsers > 0 ? (totalChefs / totalUsers).toFixed(2) : 0;
+    const monthlyUserRatio = monthlyUsers > 0 ? (monthlyChefs / monthlyUsers).toFixed(2) : 0;
+
+    const recentActivity = [
+      ...recentPayments.map(p => ({ 
+        id: `p_${p._id}`, 
+        type: 'payment', 
+        title: 'Payment Received', 
+        amount: `$${p.amount}`, 
+        user: p.userId?.userName || 'Unknown', 
+        time: p.createdAt, 
+        status: p.status === 'SUCCESS' ? 'Paid' : 'Pending' 
+      })), 
+      ...recentBookings.map(b => ({ 
+        id: `b_${b._id}`, 
+        type: 'booking', 
+        title: 'New Booking', 
+        user: b.userId?.userName || 'Unknown', 
+        chef: b.chefId?.userName || 'Unknown', 
+        time: b.createdAt, 
+        status: b.status === 'pending' ? 'Pending Verification' : 'Confirmed' 
+      }))
+    ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 10);
+
+    const formattedRecentActivity = recentActivity.map(activity => ({
+      ...activity,
+      time: new Date(activity.time).toLocaleString()
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalAdminRevenue,
+        totalBookings,
+        totalChefs,
+        totalUsers,
+        userRatio,
+        monthlyUserRatio,
+        recentActivity: formattedRecentActivity
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching admin overview',
+      error: error.message
+    });
+  }
+};
+
 export {
   createAdmin,
   adminLogin,
@@ -578,4 +698,6 @@ export {
   OTPVerifyAdmin,
   resetPasswordAdmin,
   approveUser,
+  resendOtpAdmin,
+  adminOverview,
 };

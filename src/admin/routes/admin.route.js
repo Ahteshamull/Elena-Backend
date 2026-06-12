@@ -11,6 +11,8 @@ import {
   OTPVerifyAdmin,
   resetPasswordAdmin,
   approveUser,
+  resendOtpAdmin,
+  adminOverview,
 } from "../controller/admin.controller.js";
 import {
   upload,
@@ -68,10 +70,16 @@ router.post("/forgot-password", forgotPassAdmin);
 //localhost:8005/api/v1/admin/otp-verify
 router.post("/otp-verify", OTPVerifyAdmin);
 
+//localhost:8005/api/v1/admin/resend-otp
+router.post("/resend-otp", resendOtpAdmin);
+
 //localhost:8005/api/v1/admin/reset-password
 router.post("/reset-password", resetPasswordAdmin);
 
 //localhost:8005/api/v1/admin/approve-user/:id
 router.patch("/approve-user/:id", authenticateToken, approveUser);
+
+// admin overview 
+router.get("/overview", authenticateToken, adminOverview);
 
 export default router;

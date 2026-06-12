@@ -179,7 +179,7 @@ export const createCheckoutSession = async (req, res) => {
 
     // Amount calculations
     const totalAmount = booking.totalAmount;
-    const adminCut = totalAmount * 0.15;
+    const adminCut = totalAmount * 0.20;
     const chefCut = totalAmount - adminCut;
 
     const totalAmountInCents = Math.round(totalAmount * 100);
@@ -508,15 +508,13 @@ export const userSpendingGrowth = async (req, res) => {
     const userId = req.user._id;
     const year = parseInt(req.query.year) || new Date().getFullYear();
 
-    // Create date range for the specified year
-    const startDate = new Date(year, 0, 1); // January 1st
-    const endDate = new Date(year, 11, 31); // December 31st
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(year, 11, 31);
 
-    // Get total spending for the year (host spending)
     const totalSpending = await Payment.aggregate([
       {
         $match: {
-          userId: userId, // Host ID
+          userId: userId,
           status: { $in: ["SUCCESS", "IN_PROGRESS", "HOLD"] },
           createdAt: {
             $gte: startDate,
@@ -532,11 +530,10 @@ export const userSpendingGrowth = async (req, res) => {
       },
     ]);
 
-    // Get spending by month (host spending)
     const monthlySpending = await Payment.aggregate([
       {
         $match: {
-          userId: userId, // Host ID
+          userId: userId,
           status: { $in: ["SUCCESS", "IN_PROGRESS", "HOLD"] },
           createdAt: {
             $gte: startDate,
@@ -556,21 +553,10 @@ export const userSpendingGrowth = async (req, res) => {
       },
     ]);
 
-    // Initialize all 12 months with 0 spending
     const monthlyData = [];
     const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
 
     for (let i = 1; i <= 12; i++) {
@@ -678,5 +664,49 @@ export const adminEarnings = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAllPayments = async (req, res) => {
+  try {
+    const payments = await Payment.find()
+      .populate('userId', 'userName email')
+      .populate('chefId', 'userName email')
+      .populate('bookingId')
+      .sort({ createdAt: -1 });
+
+    const formattedPayments = payments.map(payment => {
+      let daysPending = 0;
+      if (payment.status === 'HOLD') {
+        const diffTime = Math.abs(new Date() - new Date(payment.createdAt));
+        daysPending = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+      return {
+        _id: payment._id,
+        amount: payment.amount,
+        influencer_amount: payment.influencer_amount,
+        admin_amount: payment.admin_amount,
+        status: payment.status,
+        provider: payment.provider,
+        createdAt: payment.createdAt,
+        daysPending,
+        client: payment.userId,
+        chef: payment.chefId,
+        booking: payment.bookingId
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'All payments retrieved successfully',
+      data: formattedPayments
+    });
+  } catch (error) {
+    console.error('Error getting all payments:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error getting all payments',
+      error: error.message
+    });
   }
 };

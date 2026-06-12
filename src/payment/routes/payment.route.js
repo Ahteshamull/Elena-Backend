@@ -18,6 +18,7 @@ import {
   createCheckoutSession,
   paymentSuccess,
   paymentCancel,
+  getAllPayments,
 } from "../controller/payment.controller.js";
 import superAdminMiddleware from "../../helper/middlewares/superAdminMiddleware.js";
 
@@ -59,5 +60,8 @@ router.get("/user-spending-growth", authenticateToken, userSpendingGrowth);
 
 // localhost:8005/api/v1/payment/admin/earnings
 router.get("/admin/earnings", superAdminMiddleware, adminEarnings);
+
+// payment meneger 
+router.get("/manager", superAdminMiddleware, getAllPayments);
 
 export default router;

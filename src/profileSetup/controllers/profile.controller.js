@@ -602,6 +602,27 @@ export const getProfileByUserId = async (req, res) => {
   }
 };
 
+export const getPendingProfiles = async (req, res) => {
+  try {
+    const pendingProfiles = await Profile.find({ status: "pending" }).populate(
+      "userId",
+      "userName email phone role image createdAt"
+    ).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: pendingProfiles,
+    });
+  } catch (error) {
+    console.error("Error getting pending profiles:", error);
+    return res.status(500).json({
+      success: false,
+      error: true,
+      message: "Failed to retrieve pending profiles",
+    });
+  }
+};
+
 export const updateProfileStatus = async (req, res) => {
   try {
     const { id } = req.params; // userId or profileId
