@@ -49,6 +49,10 @@ export const handleSingleSendMessage = async (
 
     const conversationId = result && result.data && result.data.conversationId;
     if (conversationId) {
+      // Make sure the sender is joined to this conversation room
+      // This is critical for brand new conversations!
+      socket.join(conversationId.toString());
+
       // Emit the new message to all sockets in the conversation room
       io.to(conversationId.toString()).emit("new-message", {
         success: true,

@@ -495,6 +495,63 @@ For your security, we recommend:
       throw new Error("Failed to send confirmation email");
     }
   }
+  async sendPaymentConfirmationEmail(email, userName, role, amount) {
+    const isClient = role === "client";
+    const subject = isClient 
+      ? "Payment Successful - Your Chef is Booked!" 
+      : "New Booking! Payment Escrowed Successfully";
+      
+    const message = isClient
+      ? `Great news! Your payment of $${amount} has been successfully processed and held securely in escrow. Your booking is confirmed.`
+      : `Great news! A client has successfully booked you and their payment of $${amount} is securely held in escrow.`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      to: email,
+      subject: subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${subject}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #00b894 0%, #00a085 100%); color: white; padding: 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .success-box { background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: #155724; font-size: 18px; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${isClient ? "✅ Payment Confirmed" : "🎉 New Booking Paid"}</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${userName}!</h2>
+              <p>${message}</p>
+              <div class="success-box">
+                Amount: $${amount.toFixed(2)}
+              </div>
+              <p>For your security, funds are held in escrow and released according to our platform policies.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    try {
+      const transporter = this.getTransporter();
+      const info = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("Failed to send payment confirmation email:", error);
+      throw new Error("Failed to send payment confirmation email");
+    }
+  }
 }
 
 export default new SendOtp();

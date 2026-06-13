@@ -19,6 +19,7 @@ import {
   paymentSuccess,
   paymentCancel,
   getAllPayments,
+  verifyPayment,
 } from "../controller/payment.controller.js";
 import superAdminMiddleware from "../../helper/middlewares/superAdminMiddleware.js";
 
@@ -48,6 +49,9 @@ router.post("/checkout/:bookingId", authenticateToken, createCheckoutSession);
 // Payment redirect routes
 router.get("/success", paymentSuccess);
 router.get("/cancel", paymentCancel);
+
+// Payment verification fallback
+router.get("/verify/:sessionId", authenticateToken, verifyPayment);
 
 // localhost:8005/api/v1/payment/status/:paymentId
 router.get("/status/:paymentId", authenticateToken, getPaymentStatus);

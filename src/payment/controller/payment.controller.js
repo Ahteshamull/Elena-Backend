@@ -3,6 +3,7 @@ import userModel from "../../auth/schema/auth.modal.js";
 import Payment from "../schema/payment.modal.js";
 import bookingModel from "../../booking-chef/schema/booking.modal.js";
 import Notification from "../../notification/schema/notification.modal.js";
+import SendOtp from "../../helper/helpers/sendOtp.js";
 
 
 import Stripe from "stripe";
@@ -186,7 +187,7 @@ export const createCheckoutSession = async (req, res) => {
     const adminCutInCents = Math.round(adminCut * 100);
 
     // Create a Checkout Session
-    const frontendUrl = "https://nearly-combo-consult-exposed.trycloudflare.com/api/v1";
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -304,7 +305,11 @@ export const webhook = async (req, res) => {
     const session = event.data.object;
     
     // Find payment
-    const payment = await Payment.findOne({ sessionId: session.id }).populate("bookingId");
+    const payment = await Payment.findOne({ sessionId: session.id })
+      .populate("bookingId")
+      .populate("userId")
+      .populate("chefId");
+      
     if (payment) {
       payment.status = "HOLD"; // Funds are authorized but not captured
       payment.paymentIntentId = session.payment_intent;
@@ -316,14 +321,94 @@ export const webhook = async (req, res) => {
         title: "Payment Received in Escrow",
         message: `A payment of $${payment.amount} has been successfully held in escrow for your booking.`,
         bookingId: payment.bookingId?._id || payment.bookingId,
-        createdBy: payment.userId,
-        receiverId: payment.chefId,
+        createdBy: payment.userId?._id || payment.userId,
+        receiverId: payment.chefId?._id || payment.chefId,
         receiverRole: "chef",
       });
+
+      // Send Confirmation Emails to both client and chef
+      try {
+        const clientEmail = payment.userId?.email;
+        const clientName = payment.userId?.userName || payment.userId?.name || "Client";
+        
+        const chefEmail = payment.chefId?.email;
+        const chefName = payment.chefId?.userName || payment.chefId?.name || "Chef";
+
+        if (clientEmail) {
+          await SendOtp.sendPaymentConfirmationEmail(clientEmail, clientName, "client", payment.amount);
+        }
+        if (chefEmail) {
+          await SendOtp.sendPaymentConfirmationEmail(chefEmail, chefName, "chef", payment.amount);
+        }
+      } catch (err) {
+        console.error("Error sending payment confirmation emails:", err);
+      }
     }
   }
 
   res.json({ received: true });
+};
+
+export const verifyPayment = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    // Fetch session from stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    
+    const payment = await Payment.findOne({ sessionId })
+      .populate("bookingId")
+      .populate("userId")
+      .populate("chefId");
+      
+    if (payment && payment.status === "PENDING" && session.payment_status === "paid") {
+      payment.status = "HOLD"; // Funds are authorized but not captured
+      payment.paymentIntentId = session.payment_intent;
+      await payment.save();
+
+      // Notify the chef
+      await Notification.create({
+        type: "payment_hold",
+        title: "Payment Received in Escrow",
+        message: `A payment of $${payment.amount} has been successfully held in escrow for your booking.`,
+        bookingId: payment.bookingId?._id || payment.bookingId,
+        createdBy: payment.userId?._id || payment.userId,
+        receiverId: payment.chefId?._id || payment.chefId,
+        receiverRole: "chef",
+      });
+
+      // Send Confirmation Emails to both client and chef
+      try {
+        const clientEmail = payment.userId?.email;
+        const clientName = payment.userId?.userName || payment.userId?.name || "Client";
+        
+        const chefEmail = payment.chefId?.email;
+        const chefName = payment.chefId?.userName || payment.chefId?.name || "Chef";
+
+        if (clientEmail) {
+          await SendOtp.sendPaymentConfirmationEmail(clientEmail, clientName, "client", payment.amount);
+        }
+        if (chefEmail) {
+          await SendOtp.sendPaymentConfirmationEmail(chefEmail, chefName, "chef", payment.amount);
+        }
+      } catch (err) {
+        console.error("Error sending payment confirmation emails:", err);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment verified successfully",
+      status: payment?.status || "NOT_FOUND"
+    });
+  } catch (error) {
+    console.error("Error verifying payment:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error verifying payment",
+      error: error.message,
+    });
+  }
 };
 
 export const capturePayment = async (req, res) => {
