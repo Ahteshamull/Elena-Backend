@@ -191,7 +191,8 @@ export const verifyRegistration = async (req, res) => {
   delete userData.registrationOtp;
   delete userData.otpExpiry;
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user);
+  const { accessToken, refreshToken } =
+    await generateAccessAndRefreshToken(user);
 
   const cookieOptions = {
     httpOnly: true,
