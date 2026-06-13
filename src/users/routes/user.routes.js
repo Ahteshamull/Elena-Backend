@@ -24,6 +24,16 @@ import superAdminMiddleware from "../../helper/middlewares/superAdminMiddleware.
 import adminMiddleware from "../../helper/middlewares/authmiddleware.js";
 const router = express.Router();
 
+// Setup upload fields based on the profile requirements
+const uploadFields = upload.fields([
+  { name: "image", maxCount: 1 },
+  { name: "cv", maxCount: 1 },
+  { name: "governmentId", maxCount: 1 },
+  { name: "foodSafetyCertificate", maxCount: 1 },
+  { name: "dishPhotography", maxCount: 10 },
+  { name: "eventHighlights", maxCount: 10 },
+]);
+
 //localhost:8005/api/v1/user/all-users
 router.get("/all-users", allUser);
 router.get("/all-users/:role", allUser);
@@ -37,7 +47,7 @@ router.get("/single-user/:id", singleUser);
 router.patch(
   "/update-profile",
   authenticateToken,
-  upload.single("image"),
+  uploadFields,
   errorCheck,
   updateProfile,
 );

@@ -776,10 +776,13 @@ export const currentUserLogin = async (req, res) => {
       return res.status(404).json({ error: true, message: "User not found" });
     }
 
+    const profile = await Profile.findOne({ userId: user._id });
+
     // Convert to object and ensure 'id' is included in a convenient format
     const userData = user.toObject();
     userData.id = user._id;
     userData.role = user.role || "user";
+    userData.profile = profile || null;
 
     return res.status(200).json({
       success: true,

@@ -118,17 +118,7 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    const {
-      userName,
-      email,
-      phone,
-      dateOfBirth,
-      country,
-      image,
-    } = req.body;
-
     const existingUser = await userModel.findById(userId);
-
     if (!existingUser) {
       return res.status(404).json({
         success: false,
@@ -136,74 +126,114 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    const updateData = {};
-    let hasChanges = false;
-
-    // Check mapping since the UI uses Full Name -> userName
-    if (userName !== undefined && userName.trim() !== existingUser.userName) {
-      const duplicate = await userModel.findOne({ userName: userName.trim(), _id: { $ne: userId } });
-      if (duplicate) {
-        return res.status(409).json({ success: false, message: "This Name is already taken." });
+    // Helper to parse arrays from FormData
+    const parseArray = (field) => {
+      if (!field) return [];
+      if (Array.isArray(field)) return field;
+      if (typeof field === "string") {
+        try {
+          const parsed = JSON.parse(field);
+          return Array.isArray(parsed) ? parsed : [field];
+        } catch (e) {
+          return field.split(",").map((item) => item.trim());
+        }
       }
-      updateData.userName = userName.trim();
-      hasChanges = true;
-    }
+      return [];
+    };
 
-    if (email !== undefined && email.toLowerCase().trim() !== existingUser.email) {
-      const duplicate = await userModel.findOne({ email: email.toLowerCase().trim(), _id: { $ne: userId } });
-      if (duplicate) {
-        return res.status(409).json({ success: false, message: "This Email is already in use." });
+    // 1. Prepare User Update Data
+    const userUpdateData = {};
+    const userFields = ["userName", "email", "phone", "dateOfBirth", "country"];
+    
+    for (const field of userFields) {
+      if (req.body[field] !== undefined) {
+        if (field === 'userName' && req.body.userName.trim() !== existingUser.userName) {
+           const duplicate = await userModel.findOne({ userName: req.body.userName.trim(), _id: { $ne: userId } });
+           if (duplicate) return res.status(409).json({ success: false, message: "This Name is already taken." });
+           userUpdateData.userName = req.body.userName.trim();
+        } else if (field === 'email' && req.body.email.toLowerCase().trim() !== existingUser.email) {
+           const duplicate = await userModel.findOne({ email: req.body.email.toLowerCase().trim(), _id: { $ne: userId } });
+           if (duplicate) return res.status(409).json({ success: false, message: "This Email is already in use." });
+           userUpdateData.email = req.body.email.toLowerCase().trim();
+        } else {
+           userUpdateData[field] = req.body[field];
+        }
       }
-      updateData.email = email.toLowerCase().trim();
-      hasChanges = true;
     }
 
-    if (phone !== undefined && phone !== existingUser.phone) {
-      updateData.phone = phone;
-      hasChanges = true;
+    if (req.files?.image?.[0]) {
+      userUpdateData.image = `/uploads/${req.files.image[0].filename}`;
     }
 
-    if (dateOfBirth !== undefined && dateOfBirth !== existingUser.dateOfBirth) {
-      updateData.dateOfBirth = dateOfBirth;
-      hasChanges = true;
+    // 2. Prepare Profile Update Data
+    const profileUpdateData = { ...req.body };
+    // Remove fields that exclusively belong to User to avoid clutter, though it's optional
+    delete profileUpdateData.email;
+    delete profileUpdateData.userName;
+
+    // Handle single file uploads for Profile
+    if (req.files?.image?.[0]) profileUpdateData.image = `/uploads/${req.files.image[0].filename}`;
+    if (req.files?.cv?.[0]) profileUpdateData.cv = `/uploads/${req.files.cv[0].filename}`;
+    if (req.files?.governmentId?.[0]) profileUpdateData.governmentId = `/uploads/${req.files.governmentId[0].filename}`;
+    if (req.files?.foodSafetyCertificate?.[0]) profileUpdateData.foodSafetyCertificate = `/uploads/${req.files.foodSafetyCertificate[0].filename}`;
+
+    // Handle array uploads for Profile
+    if (req.files?.dishPhotography) {
+      const newPhotos = req.files.dishPhotography.map((f) => `/uploads/${f.filename}`);
+      const existing = parseArray(req.body.existingDishPhotography || req.body.dishPhotography);
+      profileUpdateData.dishPhotography = [...existing, ...newPhotos];
+    } else if (req.body.dishPhotography !== undefined) {
+      profileUpdateData.dishPhotography = parseArray(req.body.dishPhotography);
     }
 
-    if (country !== undefined && country !== existingUser.country) {
-      updateData.country = country;
-      hasChanges = true;
+    if (req.files?.eventHighlights) {
+      const newHighlights = req.files.eventHighlights.map((f) => `/uploads/${f.filename}`);
+      const existing = parseArray(req.body.existingEventHighlights || req.body.eventHighlights);
+      profileUpdateData.eventHighlights = [...existing, ...newHighlights];
+    } else if (req.body.eventHighlights !== undefined) {
+      profileUpdateData.eventHighlights = parseArray(req.body.eventHighlights);
     }
 
+    // Handle text arrays for Profile
+    const arrayFields = ["cuisineSpecialties", "languages", "chefCategory", "availableDates", "serviceWindows", "guestPricingTiers"];
+    arrayFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        profileUpdateData[field] = parseArray(req.body[field]);
+      }
+    });
 
-
-    // Image upload handling
-    if (req.file) {
-      updateData.image = `/uploads/${req.file.filename}`;
-      hasChanges = true;
-    } else if (image !== undefined && image !== existingUser.image) {
-      updateData.image = image;
-      hasChanges = true;
+    // 3. Execute Updates
+    // Update User
+    let updatedUser = existingUser;
+    if (Object.keys(userUpdateData).length > 0) {
+      updatedUser = await userModel.findByIdAndUpdate(
+        userId,
+        { $set: userUpdateData },
+        { new: true, runValidators: true }
+      ).select("-password -confirmPassword -refreshToken");
     }
 
-    if (!hasChanges) {
-      return res.status(200).json({
-        success: true,
-        message: "No changes detected",
-        data: existingUser,
-      });
+    // Upsert Profile
+    let updatedProfile = null;
+    if (Object.keys(profileUpdateData).length > 0) {
+      updatedProfile = await Profile.findOneAndUpdate(
+        { userId },
+        { $set: profileUpdateData },
+        { new: true, upsert: true, runValidators: true }
+      );
     }
 
-    const updatedUser = await userModel.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    ).select("-password -confirmPassword -refreshToken");
+    // Send the combined response so the frontend gets all the updated data
+    const userObj = updatedUser.toObject ? updatedUser.toObject() : { ...updatedUser };
+    userObj.profile = updatedProfile;
 
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedUser,
+      data: userObj,
     });
   } catch (error) {
+    console.error("Update Profile Error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to update profile",
