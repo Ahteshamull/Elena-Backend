@@ -1,5 +1,9 @@
 import userModel from "../../auth/schema/auth.modal.js";
 import Payment from "../../payment/schema/payment.modal.js";
+import bookingModel from "../../booking-chef/schema/booking.modal.js";
+import favoriteModel from "../../auth/schema/favorite.modal.js";
+import mongoose from "mongoose";
+import "../../profileSetup/schema/profile.modal.js"; // Ensure Profile is registered
 
 export const dashboard = async (req, res) => {
   try {
@@ -174,6 +178,82 @@ export const dashboard = async (req, res) => {
   }
 };
 
+export const chefDashboard = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: true, message: "Authentication required" });
+    }
+
+    // 1. Pending requests
+    const pendingRequests = await bookingModel.find({ chefId: userId, status: "pending" })
+      .populate('userId', 'userName fullName image')
+      .sort({ createdAt: -1 });
+
+    const requests = pendingRequests.map(req => {
+      const userImage = req.userId?.image;
+      return {
+        id: req._id,
+        clientName: req.userId?.fullName || req.userId?.userName || "Client",
+        event: req.eventLocation || "Event",
+        date: new Date(req.eventDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+        location: req.eventLocation,
+        amount: `$${req.totalAmount || 0}`,
+        image: userImage ? (userImage.startsWith('http') ? userImage : `http://localhost:8005${userImage}`) : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100"
+      };
+    });
+
+    // 2. Active bookings count
+    const activeBookings = await bookingModel.countDocuments({ chefId: userId, status: { $in: ["accepted", "confirmed"] } });
+
+    // 3. Total earnings
+    const earnings = await Payment.aggregate([
+      { $match: { chefId: new mongoose.Types.ObjectId(userId), paymentStatus: "paid" } },
+      { $group: { _id: null, total: { $sum: "$influencer_amount" } } }
+    ]);
+    const totalEarnings = earnings.length > 0 ? `$${earnings[0].total.toLocaleString()}` : "$0";
+
+    // 4. Rating and reviews
+    const Review = (await import('../../review/schema/review.modal.js')).default;
+    const reviews = await Review.find({ revieweeId: userId }).populate('reviewerId', 'userName image').sort({ createdAt: -1 }).limit(2);
+    
+    const ratingAgg = await Review.aggregate([
+      { $match: { revieweeId: new mongoose.Types.ObjectId(userId) } },
+      { $group: { _id: null, avgRating: { $avg: "$rating" } } }
+    ]);
+    const rating = ratingAgg.length > 0 ? ratingAgg[0].avgRating.toFixed(1) : "0.0";
+
+    const recentReviews = reviews.map(r => ({
+      id: r._id,
+      rating: r.rating,
+      comment: r.comment,
+      timeAgo: "Recently",
+      reviewerName: r.reviewerId?.userName || "Guest"
+    }));
+
+    // 5. Upcoming Payout
+    const upcomingPayout = "$0.00"; // Can be calculated from pending payouts if needed
+
+    res.status(200).json({
+      success: true,
+      data: {
+        requests,
+        statsData: {
+          activeBookings,
+          totalEarnings,
+          rating
+        },
+        recentReviews,
+        upcomingPayout
+      }
+    });
+
+  } catch (error) {
+    console.error("Chef dashboard error:", error);
+    res.status(500).json({ success: false, error: true, message: error.message });
+  }
+};
+
 export const userDashboard = async (req, res) => {
   try {
     // Get user ID from token
@@ -198,6 +278,44 @@ export const userDashboard = async (req, res) => {
     }
 
     const showFullAnalytics = true;
+
+    const [totalBookingsCount, savedChefsCount, nextBookingDoc] = await Promise.all([
+      bookingModel.countDocuments({ userId }),
+      favoriteModel.countDocuments({ myId: userId }),
+      bookingModel.findOne({ 
+        userId, 
+        eventDate: { $gte: new Date() }, 
+        status: { $in: ["pending", "confirmed"] } 
+      }).sort({ eventDate: 1 }).populate({
+        path: 'chefId',
+        select: 'userName image profile',
+      })
+    ]);
+
+    let formattedNextBooking = null;
+    if (nextBookingDoc) {
+      // Manually find the profile to be safe
+      const mongoose = (await import('mongoose')).default;
+      const Profile = mongoose.model('Profile');
+      const chefProfile = await Profile.findOne({ userId: nextBookingDoc.chefId._id });
+      
+      const chefName = chefProfile?.fullName || chefProfile?.displayName || nextBookingDoc.chefId?.userName || "A Chef";
+      const rawImage = chefProfile?.image || nextBookingDoc.chefId?.image;
+      const image = rawImage ? (rawImage.startsWith('http') ? rawImage : `http://localhost:8005${rawImage}`) : "https://images.unsplash.com/photo-1577219491135-ce39a73e4f83?auto=format&fit=crop&q=80&w=300";
+
+      const date = new Date(nextBookingDoc.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      
+      formattedNextBooking = {
+        _id: nextBookingDoc._id,
+        chefName,
+        date,
+        time: nextBookingDoc.arrivalTime,
+        location: nextBookingDoc.eventLocation,
+        experience: "Private Chef Experience",
+        image,
+        status: nextBookingDoc.status.charAt(0).toUpperCase() + nextBookingDoc.status.slice(1)
+      };
+    }
 
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth();
@@ -351,6 +469,13 @@ export const userDashboard = async (req, res) => {
           isTrial: false,
           isPreview: false,
           showFullAnalytics: true,
+        },
+        overview: {
+          userName: user.userName,
+          totalBookings: totalBookingsCount,
+          savedChefs: savedChefsCount,
+          accountStatus: user.isVerify ? "Verified" : "Pending",
+          nextBooking: formattedNextBooking,
         },
         totals: {
           earnings: {

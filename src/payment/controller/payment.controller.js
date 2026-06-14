@@ -588,6 +588,97 @@ export const getUserPayments = async (req, res) => {
   }
 };
 
+export const getChefEarnings = async (req, res) => {
+  try {
+    const chefId = req.user?._id || req.user?.id || req.user?.userId;
+    const { page = 1, limit = 10, status } = req.query;
+
+    const filter = { chefId, isDeleted: false };
+
+    if (status) {
+      filter.status = status.toUpperCase();
+    }
+
+    const skip = (page - 1) * limit;
+
+    const payments = await Payment.find(filter)
+      .populate("userId", "name userName email")
+      .populate("bookingId")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip(skip);
+
+    const total = await Payment.countDocuments(filter);
+    
+    const now = new Date();
+    const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const metricsAggr = await Payment.aggregate([
+      { $match: { chefId: new mongoose.Types.ObjectId(chefId), status: "SUCCESS" } },
+      { 
+        $facet: {
+          totalEarnings: [
+            { $group: { _id: null, total: { $sum: "$influencer_amount" } } }
+          ],
+          lastPayout: [
+            { $sort: { createdAt: -1 } },
+            { $limit: 1 },
+            { $project: { createdAt: 1 } }
+          ],
+          thisMonthEarnings: [
+            { $match: { createdAt: { $gte: firstDayThisMonth } } },
+            { $group: { _id: null, total: { $sum: "$influencer_amount" } } }
+          ],
+          lastMonthEarnings: [
+            { $match: { createdAt: { $gte: firstDayLastMonth, $lt: firstDayThisMonth } } },
+            { $group: { _id: null, total: { $sum: "$influencer_amount" } } }
+          ]
+        }
+      }
+    ]);
+
+    const metrics = metricsAggr[0] || {};
+    const totalEarnings = metrics.totalEarnings?.[0]?.total || 0;
+    const lastPayoutDate = metrics.lastPayout?.[0]?.createdAt || null;
+    const thisMonthEarnings = metrics.thisMonthEarnings?.[0]?.total || 0;
+    const lastMonthEarnings = metrics.lastMonthEarnings?.[0]?.total || 0;
+
+    // Calculate growth percentage
+    let growth = 0;
+    if (lastMonthEarnings > 0) {
+      growth = ((thisMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100;
+    } else if (thisMonthEarnings > 0) {
+      growth = 100;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Chef earnings retrieved successfully",
+      data: {
+        payments,
+        totalEarnings,
+        lastPayoutDate,
+        thisMonthEarnings,
+        growth: Math.round(growth),
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          total,
+          limit: parseInt(limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error getting chef earnings:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error getting chef earnings",
+      error: error.message,
+    });
+  }
+};
+
 export const userSpendingGrowth = async (req, res) => {
   try {
     const userId = req.user._id;

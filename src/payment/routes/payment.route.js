@@ -20,6 +20,7 @@ import {
   paymentCancel,
   getAllPayments,
   verifyPayment,
+  getChefEarnings,
 } from "../controller/payment.controller.js";
 import superAdminMiddleware from "../../helper/middlewares/superAdminMiddleware.js";
 
@@ -58,6 +59,9 @@ router.get("/status/:paymentId", authenticateToken, getPaymentStatus);
 
 // localhost:8005/api/v1/payment/my-payments
 router.get("/my-payments", authenticateToken, getUserPayments);
+
+// localhost:8005/api/v1/payment/chef-earnings
+router.get("/chef-earnings", authenticateToken, requireChefRole, getChefEarnings);
 
 // localhost:8005/api/v1/payment/user-spending-growth
 router.get("/user-spending-growth", authenticateToken, userSpendingGrowth);

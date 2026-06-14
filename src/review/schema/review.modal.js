@@ -15,9 +15,9 @@ const ReviewSchema = new Schema(
       required: true,
       trim: true,
     },
-    collaborationId: {
+    bookingId: {
       type: Schema.Types.ObjectId,
-      ref: "Collaboration",
+      ref: "Booking",
       required: true,
     },
     reviewerId: {
@@ -42,7 +42,7 @@ const ReviewSchema = new Schema(
 );
 
 // Create indexes for better query performance
-ReviewSchema.index({ collaborationId: 1 });
+ReviewSchema.index({ bookingId: 1 });
 ReviewSchema.index({ reviewerId: 1 });
 ReviewSchema.index({ revieweeId: 1 });
 ReviewSchema.index({ rating: 1 });

@@ -731,3 +731,234 @@ export const getAllBookings = async (req, res) => {
     });
   }
 };
+
+// @desc    Update booking details (date, time, guests)
+// @route   PATCH /api/v1/booking/:id/update-details
+// @access  Private
+export const updateBookingDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { eventDate, arrivalTime, numberOfGuests } = req.body;
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID parameter",
+      });
+    }
+
+    const booking = await bookingModel.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const isClient = booking.userId.toString() === userId.toString();
+    const isAdmin = req.user?.role === "admin" || req.user?.role === "superAdmin";
+
+    if (!isClient && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to update this booking.",
+      });
+    }
+
+    // Process updates
+    if (eventDate) {
+      const bookingDate = new Date(eventDate);
+      if (isNaN(bookingDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid event date format",
+        });
+      }
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (bookingDate < today) {
+        return res.status(400).json({
+          success: false,
+          message: "Booking date cannot be in the past",
+        });
+      }
+      booking.eventDate = bookingDate;
+    }
+
+    if (arrivalTime) {
+      booking.arrivalTime = arrivalTime;
+    }
+
+    if (numberOfGuests) {
+      const guestCount = parseInt(numberOfGuests, 10);
+      if (isNaN(guestCount) || guestCount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Number of guests must be a valid positive number",
+        });
+      }
+      
+      booking.numberOfGuests = guestCount;
+      
+      // Recalculating pricing:
+      const chefProfile = await Profile.findOne({ userId: booking.chefId });
+      if (chefProfile) {
+        const minimumFee = chefProfile.minimumBookingAmount || 0;
+        let perPersonRate = chefProfile.startingPricePerPerson || 0;
+        let isCustomQuote = false;
+
+        if (chefProfile.guestPricingTiers && chefProfile.guestPricingTiers.length > 0) {
+          const applicableTier = chefProfile.guestPricingTiers.find((tier) => {
+            const matchesMin = guestCount >= tier.minGuests;
+            const matchesMax = tier.maxGuests ? guestCount <= tier.maxGuests : true;
+            return matchesMin && matchesMax;
+          });
+
+          if (applicableTier) {
+            if (applicableTier.isCustomQuote) {
+              isCustomQuote = true;
+            } else {
+              perPersonRate = applicableTier.pricePerPerson || 0;
+            }
+          }
+        }
+
+        if (!isCustomQuote) {
+          booking.totalAmount = minimumFee + guestCount * perPersonRate;
+        }
+      }
+    }
+
+    // Set status to pending if changes were made
+    booking.status = "pending";
+
+    const updatedBooking = await booking.save();
+
+    await Notification.create({
+      type: `booking_updated`,
+      title: `Booking Updated`,
+      message: `The booking details have been updated.`,
+      bookingId: updatedBooking._id,
+      createdBy: userId,
+      receiverId: booking.chefId,
+      receiverRole: "chef",
+    });
+
+    const populatedBooking = await updatedBooking.populate([
+      { path: "chefId", select: "-password -confirmPassword -refreshToken" },
+      { path: "userId", select: "-password -confirmPassword -refreshToken" },
+    ]);
+
+    const formattedResponse = await formatBookingsWithChefInfo(populatedBooking);
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking details updated successfully",
+      data: formattedResponse,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update booking details",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Cancel a booking (Client/Chef/Admin)
+// @route   PATCH /api/v1/booking/:id/cancel
+// @access  Private
+export const cancelBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID parameter",
+      });
+    }
+
+    const booking = await bookingModel.findById(id);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const isClient = booking.userId.toString() === userId.toString();
+    const isChef = booking.chefId.toString() === userId.toString();
+    const isAdmin = req.user?.role === "admin" || req.user?.role === "superAdmin";
+
+    if (!isClient && !isChef && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to cancel this booking.",
+      });
+    }
+
+    if (booking.status === "cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "Booking is already cancelled.",
+      });
+    }
+
+    if (booking.status === "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot cancel a completed booking.",
+      });
+    }
+
+    booking.status = "cancelled";
+    const updatedBooking = await booking.save();
+
+    await Notification.create({
+      type: "booking_cancelled",
+      title: "Booking Cancelled",
+      message: `A booking has been cancelled.`,
+      bookingId: updatedBooking._id,
+      createdBy: userId,
+      receiverId: isClient ? booking.chefId : booking.userId,
+      receiverRole: isClient ? "chef" : "user",
+    });
+
+    const populatedBooking = await updatedBooking.populate([
+      { path: "chefId", select: "-password -confirmPassword -refreshToken" },
+      { path: "userId", select: "-password -confirmPassword -refreshToken" },
+    ]);
+
+    const formattedResponse = await formatBookingsWithChefInfo(populatedBooking);
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking cancelled successfully",
+      data: formattedResponse,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to cancel booking",
+      error: error.message,
+    });
+  }
+};

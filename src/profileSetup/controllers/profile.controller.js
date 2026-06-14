@@ -442,29 +442,18 @@ export const updateProfile = async (req, res) => {
       }
     }
 
-    // Reset status to pending when profile is updated (needs admin re-approval)
-    updateData.status = "pending";
-    updateData.rejectionReason = undefined;
-
     const profile = await Profile.findOneAndUpdate(
       { userId },
       { $set: updateData },
       { new: true, runValidators: true },
     );
 
-    // Sync with User's isApprovedByAdmin status (needs re-approval on save/update)
-    const user = await userModel.findById(userId);
-    if (user) {
-      user.isApprovedByAdmin = false;
-      await user.save();
-    }
-
     // Send notification to admin
     try {
       await createNotification(
-        "profile_created",
+        "profile_updated",
         "Chef Profile Updated",
-        `Chef "${profile.fullName || profile.displayName || "A Chef"}" has updated their profile, requiring re-approval.`,
+        `Chef "${profile.fullName || profile.displayName || "A Chef"}" has updated their profile.`,
         null,
         userId,
         "admin",
@@ -475,7 +464,7 @@ export const updateProfile = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Profile updated successfully, pending admin approval",
+      message: "Profile updated successfully",
       data: profile,
     });
   } catch (error) {

@@ -10,8 +10,8 @@ import { authenticateToken } from "../../helper/middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-// localhost:8005/api/v1/review/create-review/:collaborationId
-router.post("/create-review/:collaborationId", authenticateToken, createReview);
+// localhost:8005/api/v1/review/create-review/:bookingId
+router.post("/create-review/:bookingId", authenticateToken, createReview);
 
 // http://localhost:8005/api/v1/review/user-personal
 router.get("/user-personal", authenticateToken, userPersonalReview);

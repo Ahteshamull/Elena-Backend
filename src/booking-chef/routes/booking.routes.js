@@ -10,6 +10,8 @@ import {
   getBookingDetails,
   updateBookingStatus,
   getAllBookings,
+  updateBookingDetails,
+  cancelBooking,
 } from "../controllers/booking.controller.js";
 
 const router = express.Router();
@@ -35,5 +37,11 @@ router.get("/:id", authenticateToken, getBookingDetails);
 
 // PATCH /api/v1/booking/:id/status - Update booking status (Private)
 router.patch("/:id/status", authenticateToken, updateBookingStatus);
+
+// PATCH /api/v1/booking/:id/update-details - Update booking details (Private)
+router.patch("/:id/update-details", authenticateToken, updateBookingDetails);
+
+// PATCH /api/v1/booking/:id/cancel - Cancel booking (Private)
+router.patch("/:id/cancel", authenticateToken, cancelBooking);
 
 export default router;

@@ -24,6 +24,21 @@ class ConversationService {
       },
     };
   }
+
+  static async createConversation(senderId, receiverId) {
+    let conversation = await Conversation.findOne({
+      participants: { $all: [senderId, receiverId] },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [senderId, receiverId],
+        unreadCount: 0,
+      });
+    }
+
+    return conversation;
+  }
 }
 
 export default ConversationService;

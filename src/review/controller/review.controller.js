@@ -1,12 +1,140 @@
+import mongoose from "mongoose";
 import Review from "../schema/review.modal.js";
 import Payment from "../../payment/schema/payment.modal.js";
 import userModel from "../../auth/schema/auth.modal.js";
+// Ensuring models are registered
+import "../../booking-chef/schema/booking.modal.js";
+import "../../notification/schema/notification.modal.js";
 
 export const createReview = async (req, res) => {
-  return res.status(503).json({
-    message: "Review creation is currently disabled",
-    reason: "Collaboration features have been removed",
-  });
+  try {
+    const { bookingId } = req.params;
+    const { rating, comment } = req.body;
+    const reviewerId = req.user?.id || req.user?._id;
+
+    if (!reviewerId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: "Rating must be between 1 and 5",
+      });
+    }
+
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Review comment is required",
+      });
+    }
+
+    const bookingModel = mongoose.model("Booking");
+    const booking = await bookingModel.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    if (booking.status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "You can only review a completed booking",
+      });
+    }
+
+    if (booking.userId.toString() !== reviewerId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the client who made the booking can review it",
+      });
+    }
+
+    // Check if review already exists
+    const existingReview = await Review.findOne({
+      bookingId,
+      reviewerId,
+      isDeleted: false,
+    });
+
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already reviewed this booking",
+      });
+    }
+
+    const revieweeId = booking.chefId;
+
+    const newReview = new Review({
+      rating,
+      comment,
+      bookingId,
+      reviewerId,
+      revieweeId,
+    });
+
+    const savedReview = await newReview.save();
+
+    // Calculate new average and total reviews for the chef
+    const stats = await Review.aggregate([
+      {
+        $match: {
+          revieweeId: revieweeId,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgRating: { $avg: "$rating" },
+          total: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const newAvg = stats.length > 0 ? stats[0].avgRating : 0;
+    const newTotal = stats.length > 0 ? stats[0].total : 0;
+
+    await userModel.findByIdAndUpdate(revieweeId, {
+      averageRating: newAvg,
+      totalReviews: newTotal,
+    });
+
+    // Send notification
+    const Notification = mongoose.model("Notification");
+    if (Notification) {
+      await Notification.create({
+        type: "new_review",
+        title: "New Review Received",
+        message: `You received a ${rating}-star review for a completed booking.`,
+        bookingId: booking._id,
+        createdBy: reviewerId,
+        receiverId: revieweeId,
+        receiverRole: "chef",
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Review created successfully",
+      data: savedReview,
+    });
+  } catch (error) {
+    console.error("Error creating review:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create review",
+      error: error.message,
+    });
+  }
 };
 
 export const userPersonalReview = async (req, res) => {
@@ -48,7 +176,7 @@ export const userPersonalReview = async (req, res) => {
 
     // Get reviews with pagination and populate related data
     const reviews = await Review.find(filter)
-      .populate("collaborationId", "title status")
+      .populate("bookingId", "eventDate eventLocation status")
       .populate("reviewerId", "name email image")
       .populate("revieweeId", "name email image")
       .sort({ createdAt: -1 })
@@ -155,7 +283,7 @@ export const userReview = async (req, res) => {
 
     // Get reviews with pagination and populate related data
     const reviews = await Review.find(filter)
-      .populate("collaborationId", "title status")
+      .populate("bookingId", "eventDate eventLocation status")
       .populate("reviewerId", "name email image")
       .populate("revieweeId", "name email image")
       .sort({ createdAt: -1 })
@@ -320,7 +448,7 @@ export const allReviews = async (req, res) => {
 
     // Get reviews with pagination and populate related data
     const reviews = await Review.find(filter)
-      .populate("collaborationId", "title status")
+      .populate("bookingId", "eventDate eventLocation status")
       .populate("reviewerId", "name email image")
       .populate("revieweeId", "name email image")
       .sort({ createdAt: -1 })

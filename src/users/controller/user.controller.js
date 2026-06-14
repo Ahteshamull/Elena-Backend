@@ -680,16 +680,29 @@ export const getMyFavoriteUsers = async (req, res) => {
         return user;
       });
 
+    // Fetch profiles for these users
+    const chefUserIds = favoriteUsers.map((u) => u._id);
+    let profiles = [];
+    if (chefUserIds.length > 0) {
+      profiles = await Profile.find({ userId: { $in: chefUserIds } });
+    }
+
+    const usersWithProfile = favoriteUsers.map((user) => {
+      const profile = profiles.find((p) => p.userId.toString() === user._id.toString());
+      user.profile = profile || null;
+      return user;
+    });
+
     return res.status(200).json({
       success: true,
       message: "Favorite users retrieved successfully",
       pagination: {
         currentPage: 1,
         totalPages: 1,
-        totalUsers: favoriteUsers.length,
-        limit: favoriteUsers.length,
+        totalUsers: usersWithProfile.length,
+        limit: usersWithProfile.length,
       },
-      data: favoriteUsers,
+      data: usersWithProfile,
     });
   } catch (error) {
     return res.status(500).json({
