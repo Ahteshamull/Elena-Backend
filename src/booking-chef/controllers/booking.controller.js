@@ -337,6 +337,24 @@ export const createBooking = async (req, res) => {
       { path: "userId", select: "-password -confirmPassword -refreshToken" },
     ]);
 
+    try {
+      if (populatedBooking.chefId && populatedBooking.chefId.email) {
+        const emailHelper = (await import("../../helper/helpers/sendOtp.js")).default;
+        const chefName = populatedBooking.chefId.firstName || "Chef";
+        const clientName = `${firstName} ${lastName}`.trim() || "A Client";
+        await emailHelper.sendNewBookingRequestEmail(
+          populatedBooking.chefId.email,
+          chefName,
+          clientName,
+          bookingDate,
+          guestCount,
+          eventLocation
+        );
+      }
+    } catch (err) {
+      console.error("Email sending failed:", err);
+    }
+
     const formattedResponse = await formatBookingsWithChefInfo(populatedBooking);
 
     return res.status(201).json({
@@ -653,6 +671,27 @@ export const updateBookingStatus = async (req, res) => {
       { path: "userId", select: "-password -confirmPassword -refreshToken" },
     ]);
 
+    try {
+      const emailHelper = (await import("../../helper/helpers/sendOtp.js")).default;
+      if (isChef && populatedBooking.userId?.email) {
+        await emailHelper.sendBookingStatusUpdateEmail(
+          populatedBooking.userId.email, 
+          populatedBooking.userId.firstName || populatedBooking.firstName || "Client", 
+          status, 
+          "chef"
+        );
+      } else if (isClient && populatedBooking.chefId?.email) {
+        await emailHelper.sendBookingStatusUpdateEmail(
+          populatedBooking.chefId.email, 
+          populatedBooking.chefId.firstName || "Chef", 
+          status, 
+          "client"
+        );
+      }
+    } catch (err) {
+      console.error("Email sending failed:", err);
+    }
+
     const formattedResponse = await formatBookingsWithChefInfo(populatedBooking);
 
     return res.status(200).json({
@@ -946,6 +985,27 @@ export const cancelBooking = async (req, res) => {
       { path: "chefId", select: "-password -confirmPassword -refreshToken" },
       { path: "userId", select: "-password -confirmPassword -refreshToken" },
     ]);
+
+    try {
+      const emailHelper = (await import("../../helper/helpers/sendOtp.js")).default;
+      if (isChef && populatedBooking.userId?.email) {
+        await emailHelper.sendBookingStatusUpdateEmail(
+          populatedBooking.userId.email, 
+          populatedBooking.userId.firstName || populatedBooking.firstName || "Client", 
+          "cancelled", 
+          "chef"
+        );
+      } else if (isClient && populatedBooking.chefId?.email) {
+        await emailHelper.sendBookingStatusUpdateEmail(
+          populatedBooking.chefId.email, 
+          populatedBooking.chefId.firstName || "Chef", 
+          "cancelled", 
+          "client"
+        );
+      }
+    } catch (err) {
+      console.error("Email sending failed:", err);
+    }
 
     const formattedResponse = await formatBookingsWithChefInfo(populatedBooking);
 

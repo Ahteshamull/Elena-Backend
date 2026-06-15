@@ -552,6 +552,179 @@ For your security, we recommend:
       throw new Error("Failed to send payment confirmation email");
     }
   }
+  async sendBookingStatusUpdateEmail(email, userName, status, actionByRole) {
+    const subject = `Booking Status Update - ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+    const message = `Your booking has been ${status} by the ${actionByRole}.`;
+    let statusClass = "status-box";
+    if (status === "cancelled" || status === "rejected") {
+      statusClass += " status-cancelled";
+    } else if (status === "confirmed" || status === "completed" || status === "accepted") {
+      statusClass += " status-confirmed";
+    }
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      to: email,
+      subject: subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${subject}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #4a90e2 0%, #007aff 100%); color: white; padding: 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .status-box { background: #e6f2ff; border: 1px solid #b3d9ff; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: #005ce6; font-size: 18px; font-weight: bold; text-transform: capitalize; }
+            .status-cancelled { background: #ffe6e6; border: 1px solid #ffb3b3; color: #e60000 !important; }
+            .status-confirmed { background: #e6ffe6; border: 1px solid #b3ffb3; color: #00e600 !important; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">📋 Booking Update</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${userName}!</h2>
+              <p>${message}</p>
+              <div class="${statusClass}">
+                Status: ${status}
+              </div>
+              <p>Please log in to your account to view more details.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    try {
+      const transporter = this.getTransporter();
+      const info = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("Failed to send booking status update email:", error);
+      throw new Error("Failed to send booking status update email");
+    }
+  }
+
+  async sendNewBookingRequestEmail(chefEmail, chefName, clientName, eventDate, guests, eventLocation) {
+    const subject = "🎉 New Booking Request!";
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      to: chefEmail,
+      subject: subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${subject}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .details-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 20px; margin: 20px 0; color: #92400e; }
+            .details-box ul { list-style-type: none; padding: 0; margin: 0; }
+            .details-box li { margin-bottom: 10px; font-size: 15px; }
+            .details-box li strong { display: inline-block; width: 120px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">🎉 New Booking Request</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${chefName}!</h2>
+              <p>Great news! You have received a new booking request from <strong>${clientName}</strong>.</p>
+              
+              <div class="details-box">
+                <ul>
+                  <li><strong>Date:</strong> ${new Date(eventDate).toDateString()}</li>
+                  <li><strong>Guests:</strong> ${guests}</li>
+                  <li><strong>Location:</strong> ${eventLocation}</li>
+                </ul>
+              </div>
+              
+              <p>Please log in to your dashboard to review and accept or reject this request.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    try {
+      const transporter = this.getTransporter();
+      const info = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("Failed to send new booking request email:", error);
+      throw new Error("Failed to send new booking request email");
+    }
+  }
+
+  async sendProfileStatusEmail(chefEmail, chefName, status, rejectionReason = "") {
+    const isApproved = status === "approved";
+    const subject = isApproved ? "🎉 Profile Approved!" : "⚠️ Profile Rejected";
+    const message = isApproved
+      ? "Congratulations! Your chef profile has been approved by the administrator. You can now start receiving bookings."
+      : `Your chef profile was rejected by the administrator. Reason: ${rejectionReason}. Please update your profile and try again.`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      to: chefEmail,
+      subject: subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${subject}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+            .header { background: ${isApproved ? 'linear-gradient(135deg, #00b894 0%, #00a085 100%)' : 'linear-gradient(135deg, #e17055 0%, #d63031 100%)'}; color: white; padding: 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .status-box { background: ${isApproved ? '#d4edda' : '#f8d7da'}; border: 1px solid ${isApproved ? '#c3e6cb' : '#f5c6cb'}; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: ${isApproved ? '#155724' : '#721c24'}; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">${isApproved ? '✅ Profile Approved' : '❌ Profile Rejected'}</h1>
+            </div>
+            <div class="content">
+              <h2>Hello ${chefName}!</h2>
+              <div class="status-box">
+                <p style="margin: 0;">${message}</p>
+              </div>
+              <p>Please log in to your dashboard to view more details.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    try {
+      const transporter = this.getTransporter();
+      const info = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("Failed to send profile status email:", error);
+      throw new Error("Failed to send profile status email");
+    }
+  }
 }
 
 export default new SendOtp();

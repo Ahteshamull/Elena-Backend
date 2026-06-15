@@ -687,8 +687,19 @@ export const updateProfileStatus = async (req, res) => {
         "chef", // receiverRole
         profile.userId, // receiverId (the chef)
       );
+
+      // Send Email Notification
+      if (user && user.email) {
+        const emailHelper = (await import("../../helper/helpers/sendOtp.js")).default;
+        await emailHelper.sendProfileStatusEmail(
+          user.email,
+          profile.fullName || profile.displayName || "Chef",
+          status,
+          profile.rejectionReason
+        );
+      }
     } catch (notifError) {
-      console.error("Failed to create chef notification:", notifError);
+      console.error("Failed to create chef notification or send email:", notifError);
     }
 
     return res.status(200).json({
