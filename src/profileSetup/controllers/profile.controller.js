@@ -3,6 +3,7 @@ import Profile from "../schema/profile.modal.js";
 import userModel from "../../auth/schema/auth.modal.js";
 import { createNotification } from "../../notification/service/notification.service.js";
 import Menu from "../../menuCreate/schema/menu.modal.js";
+import Admin from "../../admin/schema/admin.modal.js";
 
 // Helper to safely parse array fields sent as JSON or comma-separated strings
 const parseArray = (field) => {
@@ -217,8 +218,21 @@ export const upsertProfile = async (req, res) => {
         userId,
         "admin",
       );
+
+      // Send Email Notification to all admins
+      const admins = await Admin.find({});
+      if (admins && admins.length > 0) {
+        const emailHelper = (await import("../../helper/helpers/sendOtp.js")).default;
+        const chefName = profile.fullName || profile.displayName || "A Chef";
+        
+        for (const admin of admins) {
+          if (admin.email) {
+            await emailHelper.sendNewChefProfileNotificationEmail(admin.email, chefName);
+          }
+        }
+      }
     } catch (notifError) {
-      console.error("Failed to create admin notification:", notifError);
+      console.error("Failed to create admin notification or send email:", notifError);
     }
 
     return res.status(200).json({

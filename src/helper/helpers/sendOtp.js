@@ -725,6 +725,58 @@ For your security, we recommend:
       throw new Error("Failed to send profile status email");
     }
   }
+
+  async sendNewChefProfileNotificationEmail(adminEmail, chefName) {
+    const subject = "👨‍🍳 New Chef Profile Submitted for Approval";
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      to: adminEmail,
+      subject: subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>\${subject}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #4a90e2 0%, #007aff 100%); color: white; padding: 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .info-box { background: #e6f2ff; border: 1px solid #b3d9ff; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: #005ce6; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">👨‍🍳 New Chef Profile</h1>
+            </div>
+            <div class="content">
+              <h2>Hello Admin!</h2>
+              <div class="info-box">
+                <p style="margin: 0;">Chef <strong>\${chefName}</strong> has submitted their profile for account verification.</p>
+              </div>
+              <p>Please log in to the admin dashboard to review and approve or reject the profile.</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="https://dashboard.tableli.com/" style="background-color: #007aff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+
+    try {
+      const transporter = this.getTransporter();
+      const info = await transporter.sendMail(mailOptions);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("Failed to send new chef profile notification email:", error);
+      throw new Error("Failed to send new chef profile notification email");
+    }
+  }
 }
 
 export default new SendOtp();
