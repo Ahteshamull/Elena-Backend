@@ -273,6 +273,8 @@ This code will expire in 10 minutes.
 
 If you did not create an account, please ignore this email.
 
+*Important: Sometimes our emails may be routed to your Spam/Junk folder. Please mark us as 'Not Spam' to ensure you receive future notifications.*
+
 © ${new Date().getFullYear()} tableli. All rights reserved.
       `.trim(),
       html: `
@@ -336,6 +338,8 @@ If you did not create an account, please ignore this email.
                             <p style="margin:0;color:#555;font-size:13px;line-height:1.5;">
                               🔒 If you did not create a tableli account, you can safely ignore this email.
                               Do not share this code with anyone.
+                              <br/><br/>
+                              <strong>Important:</strong> Sometimes our emails may be routed to your Spam/Junk folder. Please check there and mark us as 'Not Spam' to ensure you receive future notifications.
                             </p>
                           </td>
                         </tr>
@@ -449,7 +453,9 @@ If you did not create an account, please ignore this email.
               </div>
  
               <p>If you didn't make this change, please contact our support team immediately.</p>
- 
+              <p style="font-size: 13px; color: #777; margin-top: 20px;">
+                <strong>Important:</strong> Sometimes our emails may be routed to your Spam/Junk folder. Please check there and mark us as 'Not Spam' to ensure you receive future notifications regarding your bookings.
+              </p>
               <p>For your security, we recommend:</p>
               <ul>
                 <li>Using a strong, unique password</li>
@@ -709,6 +715,9 @@ For your security, we recommend:
                 <p style="margin: 0;">${message}</p>
               </div>
               <p>Please log in to your dashboard to view more details.</p>
+              <p style="font-size: 13px; color: #777; margin-top: 20px;">
+                <strong>Important:</strong> Sometimes our emails may be routed to your Spam/Junk folder. Please mark us as 'Not Spam' to ensure you receive future notifications regarding your bookings.
+              </p>
             </div>
           </div>
         </body>

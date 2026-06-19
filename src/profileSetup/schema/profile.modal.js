@@ -65,6 +65,7 @@ const profileSchema = new Schema(
 
     // Section 06: Service Availability
     instantBooking: { type: Boolean, default: false },
+    alwaysAvailable: { type: Boolean, default: false },
     availableDates: { type: [Date], default: [] },
     serviceWindows: { type: [String], default: [] }, // e.g. Dinner, Brunch, Lunch
     travelRadius: { type: Number }, // in miles
