@@ -122,117 +122,16 @@ If you did not request a password reset, please ignore this email. Your account 
 © ${new Date().getFullYear()} tableli. All rights reserved.
       `.trim(),
       html: `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-          <title>Password Reset – tableli</title>
-        </head>
-        <body style="margin:0;padding:0;background-color:#f0f4ff;font-family:Arial,Helvetica,sans-serif;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-            <tr>
-              <td align="center" style="padding:40px 20px;">
-                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0"
-                  style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-
-                  <!-- Header -->
-                  <tr>
-                    <td style="background:linear-gradient(135deg,#e53e3e 0%,#c53030 100%);padding:36px 40px;text-align:center;">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                        <tr>
-                          <td align="center">
-                            <div style="background:rgba(255,255,255,0.15);display:inline-block;border-radius:50%;width:56px;height:56px;line-height:56px;font-size:28px;margin-bottom:12px;">
-                              🔑
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td align="center">
-                            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">
-                              Password Reset
-                            </h1>
-                            <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">
-                              tableli Security
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-
-                  <!-- Body -->
-                  <tr>
-                    <td style="padding:40px 40px 20px;">
-                      <h2 style="margin:0 0 10px;color:#1a202c;font-size:18px;">
-                        Hello, ${userName}!
-                      </h2>
-                      <p style="margin:0 0 24px;color:#4a5568;font-size:15px;line-height:1.7;">
-                        We received a request to reset the password for your tableli account.
-                        Use the code below to continue. This code is valid for <strong>10 minutes</strong>.
-                      </p>
-
-                      <!-- OTP Box -->
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                        <tr>
-                          <td align="center" style="padding:24px 0;">
-                            <div style="display:inline-block;background:#fff5f5;border:2px solid #fc8181;
-                              color:#c53030;font-size:38px;font-weight:900;letter-spacing:18px;
-                              padding:20px 36px;border-radius:12px;text-align:center;
-                              font-family:'Courier New',monospace;">
-                              ${otp}
-                            </div>
-                          </td>
-                        </tr>
-                      </table>
-
-                      <p style="margin:0 0 8px;color:#718096;font-size:13px;text-align:center;">
-                        ⏱ Expires in <strong style="color:#e53e3e;">10 minutes</strong>
-                      </p>
-                    </td>
-                  </tr>
-
-                  <!-- Warning Notice -->
-                  <tr>
-                    <td style="padding:0 40px 30px;">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                        <tr>
-                          <td style="background:#fff8f8;border-left:4px solid #fc8181;border-radius:4px;padding:14px 18px;">
-                            <p style="margin:0;color:#4a5568;font-size:13px;line-height:1.6;">
-                              ⚠️ <strong>Didn't request this?</strong> You can safely ignore this email.
-                              Your password will <strong>not</strong> be changed unless you use this code.
-                              Never share this code with anyone.
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-
-                  <!-- Divider -->
-                  <tr>
-                    <td style="padding:0 40px;">
-                      <hr style="border:none;border-top:1px solid #e2e8f0;margin:0;" />
-                    </td>
-                  </tr>
-
-                  <!-- Footer -->
-                  <tr>
-                    <td style="background:#f7fafc;padding:20px 40px;text-align:center;border-radius:0 0 12px 12px;">
-                      <p style="margin:0;color:#a0aec0;font-size:12px;line-height:1.7;">
-                        © ${new Date().getFullYear()} tableli. All rights reserved.<br />
-                        This is an automated message — please do not reply to this email.
-                      </p>
-                    </td>
-                  </tr>
-
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Password Reset - tableli</h2>
+          <p>Hello ${userName},</p>
+          <p>We received a request to reset the password for your tableli account. Your reset code is:</p>
+          <h1 style="font-size: 36px; letter-spacing: 8px; color: #e53e3e; margin: 20px 0;">${otp}</h1>
+          <p>This code expires in <strong>10 minutes</strong>.</p>
+          <p style="font-size: 13px; color: #666; margin-top: 30px;">If you didn't request this, you can safely ignore this email. Your account is safe.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved. This is an automated message.</p>
+        </div>
       `,
     };
 
@@ -278,89 +177,17 @@ If you did not create an account, please ignore this email.
 © ${new Date().getFullYear()} tableli. All rights reserved.
       `.trim(),
       html: `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-          <title>Verify Your tableli Account</title>
-        </head>
-        <body style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-            <tr>
-              <td align="center" style="padding:40px 20px;">
-                <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0"
-                  style="max-width:600px;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
-                  <!-- Header -->
-                  <tr>
-                    <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:36px 40px;text-align:center;">
-                      <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">
-                        tableli
-                      </h1>
-                      <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">
-                        Email Verification
-                      </p>
-                    </td>
-                  </tr>
-                  <!-- Body -->
-                  <tr>
-                    <td style="padding:40px 40px 20px;">
-                      <h2 style="margin:0 0 12px;color:#1a1a2e;font-size:20px;">
-                        👋 Welcome, ${userName}!
-                      </h2>
-                      <p style="margin:0 0 24px;color:#555;font-size:15px;line-height:1.6;">
-                        Thank you for signing up. Use the verification code below to activate your account.
-                      </p>
-                      <!-- OTP Box -->
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                        <tr>
-                          <td align="center" style="padding:28px 0;">
-                            <div style="display:inline-block;background:#4f46e5;color:#ffffff;font-size:36px;
-                              font-weight:800;letter-spacing:16px;padding:18px 32px;border-radius:10px;
-                              text-align:center;font-family:'Courier New',monospace;">
-                              ${otp}
-                            </div>
-                          </td>
-                        </tr>
-                      </table>
-                      <p style="margin:0 0 8px;color:#555;font-size:14px;text-align:center;">
-                        ⏱ This code expires in <strong>10 minutes</strong>.
-                      </p>
-                    </td>
-                  </tr>
-                  <!-- Notice -->
-                  <tr>
-                    <td style="padding:0 40px 30px;">
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                        <tr>
-                          <td style="background:#f8f7ff;border-left:4px solid #4f46e5;border-radius:4px;padding:14px 18px;">
-                            <p style="margin:0;color:#555;font-size:13px;line-height:1.5;">
-                              🔒 If you did not create a tableli account, you can safely ignore this email.
-                              Do not share this code with anyone.
-                              <br/><br/>
-                              <strong>Important:</strong> Sometimes our emails may be routed to your Spam/Junk folder. Please check there and mark us as 'Not Spam' to ensure you receive future notifications.
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <!-- Footer -->
-                  <tr>
-                    <td style="background:#f4f6f8;padding:20px 40px;text-align:center;">
-                      <p style="margin:0;color:#999;font-size:12px;line-height:1.6;">
-                        © ${new Date().getFullYear()} tableli. All rights reserved.<br />
-                        This is an automated message — please do not reply directly to this email.
-                      </p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Welcome to tableli!</h2>
+          <p>Hello ${userName},</p>
+          <p>Thank you for signing up. Please use the verification code below to activate your account:</p>
+          <h1 style="font-size: 36px; letter-spacing: 8px; color: #4f46e5; margin: 20px 0;">${otp}</h1>
+          <p>This code expires in <strong>10 minutes</strong>.</p>
+          <p style="font-size: 13px; color: #666; margin-top: 30px;">If you did not create a tableli account, you can safely ignore this email.</p>
+          <p style="font-size: 13px; color: #666;"><strong>Important:</strong> Please mark us as 'Not Spam' to ensure you receive future booking notifications.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved. This is an automated message.</p>
+        </div>
       `,
     };
 
@@ -382,93 +209,14 @@ If you did not create an account, please ignore this email.
       subject: "Password Reset Successful - tableli",
       headers: { "X-Mailer": "tableli Mailer" },
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Password Reset Successful</title>
-          <style>
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              background-color: #f4f4f4;
-              margin: 0;
-              padding: 0;
-            }
-            .container {
-              max-width: 600px;
-              margin: 20px auto;
-              background: white;
-              border-radius: 10px;
-              box-shadow: 0 0 20px rgba(0,0,0,0.1);
-              overflow: hidden;
-            }
-            .header {
-              background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
-              color: white;
-              padding: 30px;
-              text-align: center;
-            }
-            .header h1 {
-              margin: 0;
-              font-size: 28px;
-              font-weight: 300;
-            }
-            .content {
-              padding: 40px 30px;
-            }
-            .success-box {
-              background: #d4edda;
-              border: 1px solid #c3e6cb;
-              border-radius: 8px;
-              padding: 20px;
-              text-align: center;
-              margin: 20px 0;
-              color: #155724;
-            }
-            .footer {
-              background: #f8f9fa;
-              padding: 20px 30px;
-              text-align: center;
-              color: #6c757d;
-              font-size: 14px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>✅ Password Reset Successful</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName}!</h2>
-              <p>Your password has been successfully reset for your account.</p>
- 
-              <div class="success-box">
-                <h3>🎉 All Done!</h3>
-                <p>You can now log in with your new password.</p>
-              </div>
- 
-              <p>If you didn't make this change, please contact our support team immediately.</p>
-              <p style="font-size: 13px; color: #777; margin-top: 20px;">
-                <strong>Important:</strong> Sometimes our emails may be routed to your Spam/Junk folder. Please check there and mark us as 'Not Spam' to ensure you receive future notifications regarding your bookings.
-              </p>
-              <p>For your security, we recommend:</p>
-              <ul>
-                <li>Using a strong, unique password</li>
-                <li>Enabling two-factor authentication if available</li>
-                <li>Logging out of all devices and logging back in</li>
-              </ul>
-            </div>
-            <div class="footer">
-              <p>This is an automated email from Dalil Arehan</p>
-              <p>© ${new Date().getFullYear()} Dalil Arehan. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-        </html>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">✅ Password Reset Successful</h2>
+          <p>Hello ${userName},</p>
+          <p>Your password has been successfully reset for your tableli account. You can now log in with your new password.</p>
+          <p style="font-size: 13px; color: #666; margin-top: 20px;">If you didn't make this change, please contact our support team immediately.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved. This is an automated message.</p>
+        </div>
       `,
       text: `
 Password Reset Successful - Dalil Arehan
@@ -519,36 +267,17 @@ For your security, we recommend:
       headers: { "X-Mailer": "tableli Mailer" },
       text: `Hello ${userName}!\n\n${message}\n\nAmount: $${amount.toFixed(2)}\n\nFor your security, funds are held in escrow and released according to our platform policies.`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${subject}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #00b894 0%, #00a085 100%); color: white; padding: 30px; text-align: center; }
-            .content { padding: 40px 30px; }
-            .success-box { background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: #155724; font-size: 18px; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>${isClient ? "✅ Payment Confirmed" : "🎉 New Booking Paid"}</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName}!</h2>
-              <p>${message}</p>
-              <div class="success-box">
-                Amount: $${amount.toFixed(2)}
-              </div>
-              <p>For your security, funds are held in escrow and released according to our platform policies.</p>
-            </div>
-          </div>
-        </body>
-        </html>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">${isClient ? "✅ Payment Confirmed" : "🎉 New Booking Paid"}</h2>
+          <p>Hello ${userName},</p>
+          <p>${message}</p>
+          <p style="font-size: 18px; font-weight: bold; padding: 15px; background: #f9f9f9; border-radius: 5px; margin: 20px 0;">
+            Amount: $${amount.toFixed(2)}
+          </p>
+          <p style="font-size: 13px; color: #666;">For your security, funds are held in escrow and released according to our platform policies.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved.</p>
+        </div>
       `,
     };
 
@@ -580,38 +309,17 @@ For your security, we recommend:
       headers: { "X-Mailer": "tableli Mailer" },
       text: `Hello ${userName}!\n\n${message}\n\nStatus: ${status}\n\nPlease log in to your account to view more details.`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${subject}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #4a90e2 0%, #007aff 100%); color: white; padding: 30px; text-align: center; }
-            .content { padding: 40px 30px; }
-            .status-box { background: #e6f2ff; border: 1px solid #b3d9ff; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: #005ce6; font-size: 18px; font-weight: bold; text-transform: capitalize; }
-            .status-cancelled { background: #ffe6e6; border: 1px solid #ffb3b3; color: #e60000 !important; }
-            .status-confirmed { background: #e6ffe6; border: 1px solid #b3ffb3; color: #00e600 !important; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">📋 Booking Update</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${userName}!</h2>
-              <p>${message}</p>
-              <div class="${statusClass}">
-                Status: ${status}
-              </div>
-              <p>Please log in to your account to view more details.</p>
-            </div>
-          </div>
-        </body>
-        </html>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">📋 Booking Update</h2>
+          <p>Hello ${userName},</p>
+          <p>${message}</p>
+          <p style="font-size: 18px; font-weight: bold; padding: 15px; background: #f9f9f9; border-radius: 5px; margin: 20px 0; text-transform: capitalize;">
+            Status: ${status}
+          </p>
+          <p style="font-size: 13px; color: #666;">Please log in to your account to view more details.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved.</p>
+        </div>
       `,
     };
 
@@ -637,45 +345,19 @@ For your security, we recommend:
       headers: { "X-Mailer": "tableli Mailer" },
       text: `Hello ${chefName}!\n\nGreat news! You have received a new booking request from ${clientName}.\n\nDate: ${new Date(eventDate).toDateString()}\nGuests: ${guests}\nLocation: ${eventLocation}\n\nPlease log in to your dashboard to review and accept or reject this request.`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${subject}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; }
-            .content { padding: 40px 30px; }
-            .details-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 20px; margin: 20px 0; color: #92400e; }
-            .details-box ul { list-style-type: none; padding: 0; margin: 0; }
-            .details-box li { margin-bottom: 10px; font-size: 15px; }
-            .details-box li strong { display: inline-block; width: 120px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">🎉 New Booking Request</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${chefName}!</h2>
-              <p>Great news! You have received a new booking request from <strong>${clientName}</strong>.</p>
-              
-              <div class="details-box">
-                <ul>
-                  <li><strong>Date:</strong> ${new Date(eventDate).toDateString()}</li>
-                  <li><strong>Guests:</strong> ${guests}</li>
-                  <li><strong>Location:</strong> ${eventLocation}</li>
-                </ul>
-              </div>
-              
-              <p>Please log in to your dashboard to review and accept or reject this request.</p>
-            </div>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">🎉 New Booking Request</h2>
+          <p>Hello ${chefName},</p>
+          <p>Great news! You have received a new booking request from <strong>${clientName}</strong>.</p>
+          <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p><strong>Date:</strong> ${new Date(eventDate).toDateString()}</p>
+            <p><strong>Guests:</strong> ${guests}</p>
+            <p><strong>Location:</strong> ${eventLocation}</p>
           </div>
-        </body>
-        </html>
+          <p style="font-size: 13px; color: #666;">Please log in to your dashboard to review and accept or reject this request.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved.</p>
+        </div>
       `,
     };
 
@@ -705,38 +387,16 @@ For your security, we recommend:
       headers: { "X-Mailer": "tableli Mailer" },
       text: `Hello ${chefName}!\n\n${message}\n\nPlease log in to your dashboard to view more details.`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${subject}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-            .header { background: ${isApproved ? 'linear-gradient(135deg, #00b894 0%, #00a085 100%)' : 'linear-gradient(135deg, #e17055 0%, #d63031 100%)'}; color: white; padding: 30px; text-align: center; }
-            .content { padding: 40px 30px; }
-            .status-box { background: ${isApproved ? '#d4edda' : '#f8d7da'}; border: 1px solid ${isApproved ? '#c3e6cb' : '#f5c6cb'}; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: ${isApproved ? '#155724' : '#721c24'}; font-size: 16px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">${isApproved ? '✅ Profile Approved' : '❌ Profile Rejected'}</h1>
-            </div>
-            <div class="content">
-              <h2>Hello ${chefName}!</h2>
-              <div class="status-box">
-                <p style="margin: 0;">${message}</p>
-              </div>
-              <p>Please log in to your dashboard to view more details.</p>
-              <p style="font-size: 13px; color: #777; margin-top: 20px;">
-                <strong>Important:</strong> Sometimes our emails may be routed to your Spam/Junk folder. Please mark us as 'Not Spam' to ensure you receive future notifications regarding your bookings.
-              </p>
-            </div>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">${isApproved ? '✅ Profile Approved' : '❌ Profile Rejected'}</h2>
+          <p>Hello ${chefName},</p>
+          <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 0;">${message}</p>
           </div>
-        </body>
-        </html>
+          <p style="font-size: 13px; color: #666;">Please log in to your dashboard to view more details.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved.</p>
+        </div>
       `,
     };
 
@@ -761,38 +421,19 @@ For your security, we recommend:
       headers: { "X-Mailer": "tableli Mailer" },
       text: `Hello Admin!\n\nChef ${chefName} has submitted their profile for account verification.\n\nPlease log in to the admin dashboard to review and approve or reject the profile.`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>\${subject}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #4a90e2 0%, #007aff 100%); color: white; padding: 30px; text-align: center; }
-            .content { padding: 40px 30px; }
-            .info-box { background: #e6f2ff; border: 1px solid #b3d9ff; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; color: #005ce6; font-size: 16px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">👨‍🍳 New Chef Profile</h1>
-            </div>
-            <div class="content">
-              <h2>Hello Admin!</h2>
-              <div class="info-box">
-                <p style="margin: 0;">Chef <strong>\${chefName}</strong> has submitted their profile for account verification.</p>
-              </div>
-              <p>Please log in to the admin dashboard to review and approve or reject the profile.</p>
-              <div style="text-align: center; margin-top: 30px;">
-                <a href="https://dashboard.tableli.com/" style="background-color: #007aff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
-              </div>
-            </div>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">👨‍🍳 New Chef Profile</h2>
+          <p>Hello Admin,</p>
+          <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 0;">Chef <strong>${chefName}</strong> has submitted their profile for account verification.</p>
           </div>
-        </body>
-        </html>
+          <p style="font-size: 13px; color: #666;">Please log in to the admin dashboard to review and approve or reject the profile.</p>
+          <div style="margin-top: 20px;">
+            <a href="https://tableli.com/admin" style="background-color: #007aff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Go to Dashboard</a>
+          </div>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #999;">&copy; ${new Date().getFullYear()} tableli. All rights reserved.</p>
+        </div>
       `,
     };
 
