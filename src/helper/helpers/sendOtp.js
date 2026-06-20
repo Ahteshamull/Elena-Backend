@@ -375,13 +375,12 @@ If you did not create an account, please ignore this email.
   }
 
   async sendPasswordResetConfirmation(email, userName = "User") {
+    const senderEmail = process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
     const mailOptions = {
-      from:
-        process.env.EMAIL_FROM ||
-        process.env.OTP_EMAIL ||
-        process.env.EMAIL_USER,
+      from: `"tableli" <${senderEmail}>`,
       to: email,
       subject: "Password Reset Successful - tableli",
+      headers: { "X-Mailer": "tableli Mailer" },
       html: `
         <!DOCTYPE html>
         <html>
@@ -511,10 +510,14 @@ For your security, we recommend:
       ? `Great news! Your payment of $${amount} has been successfully processed and held securely in escrow. Your booking is confirmed.`
       : `Great news! A client has successfully booked you and their payment of $${amount} is securely held in escrow.`;
 
+    const senderEmail = process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
+
     const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      from: `"tableli" <${senderEmail}>`,
       to: email,
       subject: subject,
+      headers: { "X-Mailer": "tableli Mailer" },
+      text: `Hello ${userName}!\n\n${message}\n\nAmount: $${amount.toFixed(2)}\n\nFor your security, funds are held in escrow and released according to our platform policies.`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -568,10 +571,14 @@ For your security, we recommend:
       statusClass += " status-confirmed";
     }
 
+    const senderEmail = process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
+
     const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      from: `"tableli" <${senderEmail}>`,
       to: email,
       subject: subject,
+      headers: { "X-Mailer": "tableli Mailer" },
+      text: `Hello ${userName}!\n\n${message}\n\nStatus: ${status}\n\nPlease log in to your account to view more details.`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -621,10 +628,14 @@ For your security, we recommend:
   async sendNewBookingRequestEmail(chefEmail, chefName, clientName, eventDate, guests, eventLocation) {
     const subject = "🎉 New Booking Request!";
     
+    const senderEmail = process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
+
     const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      from: `"tableli" <${senderEmail}>`,
       to: chefEmail,
       subject: subject,
+      headers: { "X-Mailer": "tableli Mailer" },
+      text: `Hello ${chefName}!\n\nGreat news! You have received a new booking request from ${clientName}.\n\nDate: ${new Date(eventDate).toDateString()}\nGuests: ${guests}\nLocation: ${eventLocation}\n\nPlease log in to your dashboard to review and accept or reject this request.`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -685,10 +696,14 @@ For your security, we recommend:
       ? "Congratulations! Your chef profile has been approved by the administrator. You can now start receiving bookings."
       : `Your chef profile was rejected by the administrator. Reason: ${rejectionReason}. Please update your profile and try again.`;
 
+    const senderEmail = process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
+
     const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      from: `"tableli" <${senderEmail}>`,
       to: chefEmail,
       subject: subject,
+      headers: { "X-Mailer": "tableli Mailer" },
+      text: `Hello ${chefName}!\n\n${message}\n\nPlease log in to your dashboard to view more details.`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -737,10 +752,14 @@ For your security, we recommend:
 
   async sendNewChefProfileNotificationEmail(adminEmail, chefName) {
     const subject = "👨‍🍳 New Chef Profile Submitted for Approval";
+    const senderEmail = process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER;
+
     const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.OTP_EMAIL || process.env.EMAIL_USER,
+      from: `"tableli" <${senderEmail}>`,
       to: adminEmail,
       subject: subject,
+      headers: { "X-Mailer": "tableli Mailer" },
+      text: `Hello Admin!\n\nChef ${chefName} has submitted their profile for account verification.\n\nPlease log in to the admin dashboard to review and approve or reject the profile.`,
       html: `
         <!DOCTYPE html>
         <html>
