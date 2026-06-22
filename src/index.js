@@ -35,6 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/uploads", express.static("uploads"));
+app.use("/api/v1/uploads", express.static("uploads")); // To support images prefixed with VITE_BASE_URL
 
 app.use(router);
 
