@@ -14,15 +14,15 @@ const router = express.Router();
 router.post("/create-review/:bookingId", authenticateToken, createReview);
 
 // http://localhost:8005/api/v1/review/user-personal
-router.get("/user-personal", authenticateToken, userPersonalReview);
+router.get("/user-personal", userPersonalReview);
 
 // localhost:8005/api/v1/review/user/:userId
-router.get("/user/:userId", authenticateToken, userReview);
+router.get("/user/:userId", userReview);
 
 // localhost:8005/api/v1/review/delete/:reviewId
 router.delete("/delete/:reviewId", authenticateToken, deleteReview);
 
 // localhost:8005/api/v1/review/all-reviews
-router.get("/all-reviews", authenticateToken, allReviews);
+router.get("/all-reviews", allReviews);
 
 export default router;

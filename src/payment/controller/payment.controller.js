@@ -34,7 +34,7 @@ export const stripeAccountOnboarding = async (req, res) => {
     }
 
     // Validate environment URLs
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3001";
+    const frontendUrl = process.env.CLIENT_URL;
     const refreshUrl =
       process.env.ONBOARDING_REFRESH_URL || `${frontendUrl}/stripe-refresh`;
     const returnUrl =
@@ -187,7 +187,7 @@ export const createCheckoutSession = async (req, res) => {
     const adminCutInCents = Math.round(adminCut * 100);
 
     // Create a Checkout Session
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl = process.env.CLIENT_URL;
     
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],

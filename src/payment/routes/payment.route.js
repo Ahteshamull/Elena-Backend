@@ -36,10 +36,16 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_KEY;
 console.log(STRIPE_WEBHOOK_SECRET);
 
 // localhost:8005/api/v1/payment/webhook
-router.post("/webhook", (req, res, next) => {
-  console.log("🔥 WEBHOOK ENDPOINT HIT! Request received from Stripe.");
-  next();
-}, webhook);
+
+// https://api.tableli.com/api/v1/payment/webhook
+https: router.post(
+  "/webhook",
+  (req, res, next) => {
+    console.log("🔥 WEBHOOK ENDPOINT HIT! Request received from Stripe.");
+    next();
+  },
+  webhook,
+);
 
 // localhost:8005/api/v1/payment/capture/:paymentId
 router.post("/capture/:paymentId", authenticateToken, capturePayment);
