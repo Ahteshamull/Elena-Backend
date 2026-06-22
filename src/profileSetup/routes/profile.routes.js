@@ -24,8 +24,8 @@ const uploadFields = upload.fields([
   { name: "cv", maxCount: 1 },
   { name: "governmentId", maxCount: 1 },
   { name: "foodSafetyCertificate", maxCount: 1 },
-  { name: "dishPhotography", maxCount: 10 },
-  { name: "eventHighlights", maxCount: 10 },
+  { name: "dishPhotography", maxCount: 50 },
+  { name: "eventHighlights", maxCount: 50 },
 ]);
 
 // Routes
