@@ -22,7 +22,7 @@ router.get("/user/:userId", userReview);
 // localhost:8005/api/v1/review/delete/:reviewId
 router.delete("/delete/:reviewId", authenticateToken, deleteReview);
 
-// localhost:8005/api/v1/review/all-reviews
+// http://localhost:8005/api/v1/review/all-reviews
 router.get("/all-reviews", allReviews);
 
 export default router;

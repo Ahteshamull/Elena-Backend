@@ -199,7 +199,7 @@ export const chefDashboard = async (req, res) => {
         date: new Date(req.eventDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         location: req.eventLocation,
         amount: `$${req.totalAmount || 0}`,
-        image: userImage ? (userImage.startsWith('http') ? userImage : `http://localhost:8005${userImage}`) : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100"
+        image: userImage ? (userImage.startsWith('http') ? userImage : `${process.env.BASE_URL}${userImage}`) : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100"
       };
     });
 
@@ -301,7 +301,7 @@ export const userDashboard = async (req, res) => {
       
       const chefName = chefProfile?.fullName || chefProfile?.displayName || nextBookingDoc.chefId?.userName || "A Chef";
       const rawImage = chefProfile?.image || nextBookingDoc.chefId?.image;
-      const image = rawImage ? (rawImage.startsWith('http') ? rawImage : `http://localhost:8005${rawImage}`) : "https://images.unsplash.com/photo-1577219491135-ce39a73e4f83?auto=format&fit=crop&q=80&w=300";
+      const image = rawImage ? (rawImage.startsWith('http') ? rawImage : `${process.env.BASE_URL}${rawImage}`) : "https://images.unsplash.com/photo-1577219491135-ce39a73e4f83?auto=format&fit=crop&q=80&w=300";
 
       const date = new Date(nextBookingDoc.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       

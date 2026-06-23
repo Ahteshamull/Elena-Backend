@@ -10,11 +10,7 @@ const onlineUsers = new Map();
 export const initializeSocket = (server) => {
   if (!io) {
     // Allow common local frontend origins during development and the configured FRONTEND_URL.
-    const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      "http://localhost:8005",
-      "http://localhost:5173",
-    ].filter(Boolean);
+    const allowedOrigins = [process.env.FRONTEND_URL].filter(Boolean);
 
     io = new SocketIO(server, {
       cors: {
