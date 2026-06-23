@@ -1,47 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chat Testing Tool</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
-        .panel { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
-        input, button { padding: 8px; margin: 5px 0; }
-        #messages { height: 300px; border: 1px solid #ddd; overflow-y: scroll; padding: 10px; background: #f9f9f9; }
-        .msg { margin-bottom: 10px; padding: 10px; border-radius: 5px; }
-        .sent { background: #e3f2fd; text-align: right; }
-        .received { background: #e8f5e9; }
-        .system { background: #fff3e0; color: #e65100; font-size: 0.9em; text-align: center; }
-        .actions { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc; }
-        .typing { font-style: italic; color: #888; font-size: 0.9em; display: none; margin-bottom: 10px; }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+      }
+      .panel {
+        border: 1px solid #ccc;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+      }
+      input,
+      button {
+        padding: 8px;
+        margin: 5px 0;
+      }
+      #messages {
+        height: 300px;
+        border: 1px solid #ddd;
+        overflow-y: scroll;
+        padding: 10px;
+        background: #f9f9f9;
+      }
+      .msg {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .sent {
+        background: #e3f2fd;
+        text-align: right;
+      }
+      .received {
+        background: #e8f5e9;
+      }
+      .system {
+        background: #fff3e0;
+        color: #e65100;
+        font-size: 0.9em;
+        text-align: center;
+      }
+      .actions {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #ccc;
+      }
+      .typing {
+        font-style: italic;
+        color: #888;
+        font-size: 0.9em;
+        display: none;
+        margin-bottom: 10px;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <h2>Socket.IO Chat Tester</h2>
 
     <div class="panel">
-        <h3>1. Connect</h3>
-        <input type="text" id="myUserId" placeholder="Your User ID (Sender)" size="35">
-        <button onclick="connectSocket()">Connect</button>
-        <span id="status" style="color: red; font-weight: bold; margin-left: 10px;">Disconnected</span>
+      <h3>1. Connect</h3>
+      <input
+        type="text"
+        id="myUserId"
+        placeholder="Your User ID (Sender)"
+        size="35"
+      />
+      <button onclick="connectSocket()">Connect</button>
+      <span id="status" style="color: red; font-weight: bold; margin-left: 10px"
+        >Disconnected</span
+      >
     </div>
 
     <div class="panel">
-        <h3>2. Conversation Actions</h3>
-        <input type="text" id="receiverId" placeholder="Receiver User ID" size="35"><br>
-        <input type="text" id="messageText" placeholder="Type a message..." size="50" onkeyup="handleTyping()">
-        <button onclick="sendMessage()">Send</button>
-        
-        <div class="actions">
-            <strong>Current Conversation ID:</strong> <span id="currentConvId">None</span>
-            <br><br>
-            <button onclick="sendTyping(true)">Send "Typing..."</button>
-            <button onclick="sendTyping(false)">Send "Stop Typing"</button>
-            <button onclick="markAsRead()">Mark Messages as Read</button>
-        </div>
+      <h3>2. Conversation Actions</h3>
+      <input
+        type="text"
+        id="receiverId"
+        placeholder="Receiver User ID"
+        size="35"
+      /><br />
+      <input
+        type="text"
+        id="messageText"
+        placeholder="Type a message..."
+        size="50"
+        onkeyup="handleTyping()"
+      />
+      <button onclick="sendMessage()">Send</button>
+
+      <div class="actions">
+        <strong>Current Conversation ID:</strong>
+        <span id="currentConvId">None</span> <br /><br />
+        <button onclick="sendTyping(true)">Send "Typing..."</button>
+        <button onclick="sendTyping(false)">Send "Stop Typing"</button>
+        <button onclick="markAsRead()">Mark Messages as Read</button>
+      </div>
     </div>
 
     <h3>Messages Log</h3>
@@ -49,134 +110,159 @@
     <div id="messages"></div>
 
     <script>
-        let socket;
-        let activeConversationId = null;
-        let myUserId = null;
-        let typingTimeout = null;
+      let socket;
+      let activeConversationId = null;
+      let myUserId = null;
+      let typingTimeout = null;
 
-        function appendLog(text, type = 'system') {
-            const div = document.createElement('div');
-            div.className = `msg ${type}`;
-            div.innerText = typeof text === 'object' ? JSON.stringify(text, null, 2) : text;
-            document.getElementById('messages').appendChild(div);
-            div.scrollIntoView();
-        }
+      function appendLog(text, type = "system") {
+        const div = document.createElement("div");
+        div.className = `msg ${type}`;
+        div.innerText =
+          typeof text === "object" ? JSON.stringify(text, null, 2) : text;
+        document.getElementById("messages").appendChild(div);
+        div.scrollIntoView();
+      }
 
-        function connectSocket() {
-            myUserId = document.getElementById('myUserId').value.trim();
-            if(!myUserId) return alert('Please enter your User ID');
+      function connectSocket() {
+        myUserId = document.getElementById("myUserId").value.trim();
+        if (!myUserId) return alert("Please enter your User ID");
 
-            if(socket) socket.disconnect();
+        if (socket) socket.disconnect();
 
-            appendLog(`Attempting to connect as ${myUserId}...`);
-            
-            socket = io(process.env.BACKEND_URL, {
-                query: { userId: myUserId },
-                transports: ["websocket", "polling"]
+        appendLog(`Attempting to connect as ${myUserId}...`);
+
+        socket = io(process.env.BACKEND_URL, {
+          query: { userId: myUserId },
+          transports: ["websocket", "polling"],
+        });
+
+        socket.on("connect", () => {
+          document.getElementById("status").innerText = "Connected";
+          document.getElementById("status").style.color = "green";
+          appendLog("✅ Connected to socket server!");
+        });
+
+        socket.on("disconnect", () => {
+          document.getElementById("status").innerText = "Disconnected";
+          document.getElementById("status").style.color = "red";
+          appendLog("❌ Disconnected from server");
+        });
+
+        socket.on("auth-error", (err) =>
+          appendLog(`⚠️ Auth Error: ${err.message}`),
+        );
+        socket.on("socket-error", (err) =>
+          appendLog(`⚠️ Socket Error: ${err.message || JSON.stringify(err)}`),
+        );
+
+        // Receive new message
+        socket.on("new-message-notification", (data) => {
+          appendLog(`📩 Received: ${data.data.text}`, "received");
+
+          // Automatically save conversationId and join room
+          if (data.data.conversationId) {
+            activeConversationId = data.data.conversationId;
+            document.getElementById("currentConvId").innerText =
+              activeConversationId;
+            socket.emit("join-conversation", {
+              conversationId: activeConversationId,
             });
 
-            socket.on('connect', () => {
-                document.getElementById('status').innerText = 'Connected';
-                document.getElementById('status').style.color = 'green';
-                appendLog('✅ Connected to socket server!');
+            // Auto-mark as read since the message is now visible on screen
+            setTimeout(() => {
+              socket.emit("mark-messages-read", {
+                conversationId: activeConversationId,
+              });
+            }, 500); // Small delay to simulate reading
+          }
+        });
+
+        // Own message sent successfully
+        socket.on("single-message-sent", (data) => {
+          appendLog(`✅ Sent Successfully!`, "system");
+          if (data.data && data.data.data && data.data.data.conversationId) {
+            activeConversationId = data.data.data.conversationId;
+            document.getElementById("currentConvId").innerText =
+              activeConversationId;
+            socket.emit("join-conversation", {
+              conversationId: activeConversationId,
             });
+          }
+        });
 
-            socket.on('disconnect', () => {
-                document.getElementById('status').innerText = 'Disconnected';
-                document.getElementById('status').style.color = 'red';
-                appendLog('❌ Disconnected from server');
-            });
+        // Typing indicators (Requires joining the conversation room first)
+        socket.on("user-typing", (data) => {
+          document.getElementById("typingIndicator").style.display = "block";
+          document.getElementById("typingIndicator").innerText =
+            `User ${data.userId} is typing...`;
+        });
 
-            socket.on('auth-error', (err) => appendLog(`⚠️ Auth Error: ${err.message}`));
-            socket.on('socket-error', (err) => appendLog(`⚠️ Socket Error: ${err.message || JSON.stringify(err)}`));
+        socket.on("user-stop-typing", (data) => {
+          document.getElementById("typingIndicator").style.display = "none";
+        });
 
-            // Receive new message
-            socket.on('new-message-notification', (data) => {
-                appendLog(`📩 Received: ${data.data.text}`, 'received');
-                
-                // Automatically save conversationId and join room
-                if (data.data.conversationId) {
-                    activeConversationId = data.data.conversationId;
-                    document.getElementById('currentConvId').innerText = activeConversationId;
-                    socket.emit("join-conversation", { conversationId: activeConversationId });
-                    
-                    // Auto-mark as read since the message is now visible on screen
-                    setTimeout(() => {
-                        socket.emit('mark-messages-read', { conversationId: activeConversationId });
-                    }, 500); // Small delay to simulate reading
-                }
-            });
+        // Read receipts
+        socket.on("messages-marked-read", (data) => {
+          appendLog(
+            `👀 User ${data.readByUserId} has read the messages.`,
+            "system",
+          );
+        });
+      }
 
-            // Own message sent successfully
-            socket.on('single-message-sent', (data) => {
-                appendLog(`✅ Sent Successfully!`, 'system');
-                if (data.data && data.data.data && data.data.data.conversationId) {
-                    activeConversationId = data.data.data.conversationId;
-                    document.getElementById('currentConvId').innerText = activeConversationId;
-                    socket.emit("join-conversation", { conversationId: activeConversationId });
-                }
-            });
+      function sendMessage() {
+        if (!socket || !socket.connected) return alert("Connect first!");
 
-            // Typing indicators (Requires joining the conversation room first)
-            socket.on('user-typing', (data) => {
-                document.getElementById('typingIndicator').style.display = 'block';
-                document.getElementById('typingIndicator').innerText = `User ${data.userId} is typing...`;
-            });
+        const receiverId = document.getElementById("receiverId").value.trim();
+        const text = document.getElementById("messageText").value.trim();
 
-            socket.on('user-stop-typing', (data) => {
-                document.getElementById('typingIndicator').style.display = 'none';
-            });
+        if (!receiverId || !text) return alert("Enter receiver ID and message");
 
-            // Read receipts
-            socket.on('messages-marked-read', (data) => {
-                appendLog(`👀 User ${data.readByUserId} has read the messages.`, 'system');
-            });
-        }
+        const payload = { receiverId: receiverId, text: text };
+        appendLog(`📤 Sending: ${text}`, "sent");
+        socket.emit("single-chat-send-message", payload);
 
-        function sendMessage() {
-            if(!socket || !socket.connected) return alert('Connect first!');
-            
-            const receiverId = document.getElementById('receiverId').value.trim();
-            const text = document.getElementById('messageText').value.trim();
-            
-            if(!receiverId || !text) return alert('Enter receiver ID and message');
+        document.getElementById("messageText").value = "";
+        sendTyping(false); // Stop typing when sent
+      }
 
-            const payload = { receiverId: receiverId, text: text };
-            appendLog(`📤 Sending: ${text}`, 'sent');
-            socket.emit('single-chat-send-message', payload);
-            
-            document.getElementById('messageText').value = '';
-            sendTyping(false); // Stop typing when sent
-        }
+      function handleTyping() {
+        if (!activeConversationId) return;
 
-        function handleTyping() {
-            if (!activeConversationId) return;
-            
-            sendTyping(true);
-            
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                sendTyping(false);
-            }, 2000);
-        }
+        sendTyping(true);
 
-        function sendTyping(isTyping) {
-            if (!socket || !socket.connected || !activeConversationId) return;
-            
-            const eventName = isTyping ? "typing" : "stop-typing";
-            socket.emit(eventName, { 
-                conversationId: activeConversationId, 
-                userId: myUserId 
-            });
-        }
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+          sendTyping(false);
+        }, 2000);
+      }
 
-        function markAsRead() {
-            if (!socket || !socket.connected) return alert('Connect first!');
-            if (!activeConversationId) return alert('No active conversation ID found. Send or receive a message first to get one!');
+      function sendTyping(isTyping) {
+        if (!socket || !socket.connected || !activeConversationId) return;
 
-            socket.emit('mark-messages-read', { conversationId: activeConversationId });
-            appendLog(`✅ Sent 'mark-messages-read' for conversation ${activeConversationId}`, 'system');
-        }
+        const eventName = isTyping ? "typing" : "stop-typing";
+        socket.emit(eventName, {
+          conversationId: activeConversationId,
+          userId: myUserId,
+        });
+      }
+
+      function markAsRead() {
+        if (!socket || !socket.connected) return alert("Connect first!");
+        if (!activeConversationId)
+          return alert(
+            "No active conversation ID found. Send or receive a message first to get one!",
+          );
+
+        socket.emit("mark-messages-read", {
+          conversationId: activeConversationId,
+        });
+        appendLog(
+          `✅ Sent 'mark-messages-read' for conversation ${activeConversationId}`,
+          "system",
+        );
+      }
     </script>
-</body>
+  </body>
 </html>
