@@ -1,5 +1,6 @@
 import EmailValidateCheck from "../../helper/helpers/emailValidate.js";
 import userModel from "../schema/auth.modal.js";
+import PendingUser from "../schema/pendingUser.modal.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import otpService from "../../helper/helpers/otpService.js";
@@ -57,19 +58,17 @@ export const createUser = async (req, res) => {
   // Normalize email
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Check if email already exists
+  // Check if email already exists in main user model
   const existingUser = await userModel.findOne({ email: normalizedEmail });
   if (existingUser) {
-    // If user exists but is not verified, delete and re-register
-    if (!existingUser.isVerify) {
-      await userModel.findByIdAndDelete(existingUser._id);
-    } else {
-      return res.status(409).send({
-        error: true,
-        message: "Email Already In Use",
-      });
-    }
+    return res.status(409).send({
+      error: true,
+      message: "Email Already In Use",
+    });
   }
+
+  // If there's an existing pending registration, delete it to restart
+  await PendingUser.findOneAndDelete({ email: normalizedEmail });
 
   const normalizedUserName = userName.trim().toLowerCase();
 
@@ -93,10 +92,7 @@ export const createUser = async (req, res) => {
     const hashedOtp = await bcrypt.hash(otp, 10);
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Only chef needs admin approval. User is approved by default.
-    const isApprovedByAdmin = role === "chef" ? false : true;
-
-    const user = new userModel({
+    const pendingUser = new PendingUser({
       userName: normalizedUserName,
       email: normalizedEmail,
       password: hash,
@@ -104,19 +100,14 @@ export const createUser = async (req, res) => {
       phone,
       gender,
       role: role || "user",
-      isApprovedByAdmin,
-      isVerify: false,
       registrationOtp: hashedOtp,
       otpExpiry,
     });
 
-    await user.save();
+    await pendingUser.save();
 
     // Send OTP to user's email
     await sendOtp.sendRegistrationOTP(normalizedEmail, otp, normalizedUserName);
-
-    // Notify admin immediately on user creation
-    await notifyAdminOnUserCreated(user._id, user.userName, user.email);
 
     return res.status(200).send({
       success: true,
@@ -144,24 +135,26 @@ export const verifyRegistration = async (req, res) => {
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  const user = await userModel.findOne({ email: normalizedEmail });
+  const pendingUser = await PendingUser.findOne({ email: normalizedEmail });
 
-  if (!user) {
+  if (!pendingUser) {
+    // Check if they are already fully verified in userModel
+    const existingUser = await userModel.findOne({ email: normalizedEmail });
+    if (existingUser && existingUser.isVerify) {
+      return res.status(400).json({
+        error: true,
+        message: "This account is already verified. Please login.",
+      });
+    }
     return res.status(404).json({
       error: true,
-      message: "User not found. Please register first.",
-    });
-  }
-
-  if (user.isVerify) {
-    return res.status(400).json({
-      error: true,
-      message: "This account is already verified. Please login.",
+      message: "Registration session not found or expired. Please register again.",
     });
   }
 
   // Check OTP expiry
-  if (!user.otpExpiry || new Date() > user.otpExpiry) {
+  if (!pendingUser.otpExpiry || new Date() > pendingUser.otpExpiry) {
+    await PendingUser.findByIdAndDelete(pendingUser._id);
     return res.status(400).json({
       error: true,
       message: "OTP has expired. Please register again.",
@@ -169,7 +162,7 @@ export const verifyRegistration = async (req, res) => {
   }
 
   // Verify OTP
-  const isOtpValid = await bcrypt.compare(otp.toString(), user.registrationOtp);
+  const isOtpValid = await bcrypt.compare(otp.toString(), pendingUser.registrationOtp);
 
   if (!isOtpValid) {
     return res.status(400).json({
@@ -178,21 +171,64 @@ export const verifyRegistration = async (req, res) => {
     });
   }
 
-  // Activate account
-  user.isVerify = true;
-  user.registrationOtp = undefined;
-  user.otpExpiry = undefined;
-  await user.save({ validateBeforeSave: false });
+  if (pendingUser.role === "chef") {
+    // Return registrationToken for chef, don't create userModel
+    const registrationToken = jwt.sign(
+      {
+        pendingRegistration: true,
+        userData: {
+          userName: pendingUser.userName,
+          email: pendingUser.email,
+          password: pendingUser.password,
+          confirmPassword: pendingUser.confirmPassword,
+          phone: pendingUser.phone,
+          gender: pendingUser.gender,
+          role: pendingUser.role,
+        }
+      },
+      process.env.ACCESS_TOKEN_SECRET || process.env.PRV_TOKEN,
+      { expiresIn: "1d" } // They have 1 day to complete profile setup
+    );
+
+    // Delete pending user since OTP is successfully verified
+    await PendingUser.findByIdAndDelete(pendingUser._id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Account verified successfully! Please set up your profile to complete registration.",
+      accessToken: registrationToken,
+      registrationToken, // keeping it just in case
+      isProfileSetupPending: true
+    });
+  }
+
+  // If user, create userModel immediately
+  const user = new userModel({
+    userName: pendingUser.userName,
+    email: pendingUser.email,
+    password: pendingUser.password,
+    confirmPassword: pendingUser.confirmPassword,
+    phone: pendingUser.phone,
+    gender: pendingUser.gender,
+    role: pendingUser.role,
+    isApprovedByAdmin: true, // Only chef needs admin approval. User is approved by default.
+    isVerify: true,
+  });
+
+  await user.save();
+
+  // Delete pending user
+  await PendingUser.findByIdAndDelete(pendingUser._id);
+
+  // Notify admin immediately on user creation
+  await notifyAdminOnUserCreated(user._id, user.userName, user.email);
 
   // Avoid a redundant DB query by converting the document to a plain object and cleaning up sensitive fields
   const userData = user.toObject();
   delete userData.password;
   delete userData.confirmPassword;
-  delete userData.registrationOtp;
-  delete userData.otpExpiry;
 
-  const { accessToken, refreshToken } =
-    await generateAccessAndRefreshToken(user);
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user);
 
   const cookieOptions = {
     httpOnly: true,
@@ -200,18 +236,13 @@ export const verifyRegistration = async (req, res) => {
     sameSite: "strict",
   };
 
-  const message =
-    user.role === "chef"
-      ? "Account verified and created successfully! You need to setup your profile. Once the admin approves your account, you will be able to log in."
-      : "Account verified and created successfully! You can now log in.";
-
   return res
     .status(201)
     .cookie("accessToken", accessToken, cookieOptions)
     .cookie("refreshToken", refreshToken, cookieOptions)
     .json({
       success: true,
-      message,
+      message: "Account verified and created successfully! You can now log in.",
       data: userData,
       accessToken,
       refreshToken,
@@ -556,16 +587,18 @@ export const ResendOtp = async (req, res) => {
   const normalizedEmail = email.toLowerCase().trim();
 
   const existingUser = await userModel.findOne({ email: normalizedEmail });
-  if (!existingUser) {
-    return res.status(404).json({ error: true, message: "User not found" });
+  if (existingUser) {
+    if (existingUser.isVerify) {
+      return res.status(400).json({
+        error: true,
+        message: "This account is already verified. Please login.",
+      });
+    }
   }
 
-  // If already verified, no need to resend
-  if (existingUser.isVerify) {
-    return res.status(400).json({
-      error: true,
-      message: "This account is already verified. Please login.",
-    });
+  const pendingUser = await PendingUser.findOne({ email: normalizedEmail });
+  if (!pendingUser) {
+    return res.status(404).json({ error: true, message: "Registration session not found. Please register first." });
   }
 
   try {
@@ -574,16 +607,16 @@ export const ResendOtp = async (req, res) => {
     const hashedOtp = await bcrypt.hash(otp, 10);
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Update registration OTP directly on the user document
-    existingUser.registrationOtp = hashedOtp;
-    existingUser.otpExpiry = otpExpiry;
-    await existingUser.save({ validateBeforeSave: false });
+    // Update registration OTP directly on the pending user document
+    pendingUser.registrationOtp = hashedOtp;
+    pendingUser.otpExpiry = otpExpiry;
+    await pendingUser.save({ validateBeforeSave: false });
 
     // Send registration verification email
     await sendOtp.sendRegistrationOTP(
       normalizedEmail,
       otp,
-      existingUser.userName || "User",
+      pendingUser.userName || "User",
     );
 
     return res.status(200).json({
@@ -599,7 +632,7 @@ export const ResendOtp = async (req, res) => {
   }
 };
 
-async function generateAccessAndRefreshToken(user) {
+export async function generateAccessAndRefreshToken(user) {
   const accessToken = jwt.sign(
     {
       _id: user._id,

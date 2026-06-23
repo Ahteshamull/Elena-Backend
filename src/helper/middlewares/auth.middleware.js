@@ -7,9 +7,9 @@ const authenticateToken = (req, res, next) => {
   const bearerToken = authHeader && authHeader.split(" ")[1];
   const cookieToken = req.cookies?.token || req.cookies?.accessToken;
 
-  const token = bearerToken || cookieToken;
+  let token = bearerToken || cookieToken;
 
-  if (!token) {
+  if (!token || token === "null" || token === "undefined") {
     return res.status(401).json({
       message: "Access token required",
     });
@@ -22,6 +22,8 @@ const authenticateToken = (req, res, next) => {
       if (err) {
         return res.status(403).json({
           message: "Invalid or expired token",
+          error: err.message,
+          tokenPreview: token.substring(0, 10) + "..."
         });
       }
       req.user = user;

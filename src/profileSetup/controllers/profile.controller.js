@@ -30,7 +30,36 @@ const parseDates = (field) => {
 
 export const upsertProfile = async (req, res) => {
   try {
-    const userId = req.user?.id || req.user?._id;
+    let userId = req.user?.id || req.user?._id;
+    let isNewRegistration = false;
+
+    if (req.user?.pendingRegistration) {
+      const { userData } = req.user;
+      
+      const existingUserCheck = await userModel.findOne({ email: userData.email });
+      if (existingUserCheck) {
+         return res.status(409).json({ success: false, error: true, message: "User with this email already exists" });
+      }
+      
+      const newUser = new userModel({
+        userName: userData.userName,
+        email: userData.email,
+        password: userData.password,
+        confirmPassword: userData.confirmPassword,
+        phone: userData.phone,
+        gender: userData.gender,
+        role: userData.role,
+        isApprovedByAdmin: false,
+        isVerify: true,
+      });
+      await newUser.save();
+      userId = newUser._id;
+      isNewRegistration = true;
+
+      // Provide these for downstream logic
+      req.user._id = userId;
+      req.user.role = userData.role;
+    }
 
     if (!userId) {
       return res.status(401).json({
@@ -235,12 +264,35 @@ export const upsertProfile = async (req, res) => {
       console.error("Failed to create admin notification or send email:", notifError);
     }
 
-    return res.status(200).json({
+    let responsePayload = {
       success: true,
       message:
         "Profile saved successfully,when admin will approve your profile you can see your informations",
       data: profile,
-    });
+    };
+
+    if (isNewRegistration) {
+      const { generateAccessAndRefreshToken } = await import("../../auth/controller/auth.controller.js");
+      // user is guaranteed to exist from earlier check
+      const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user);
+
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      };
+
+      responsePayload.accessToken = accessToken;
+      responsePayload.refreshToken = refreshToken;
+
+      return res
+        .status(200)
+        .cookie("accessToken", accessToken, cookieOptions)
+        .cookie("refreshToken", refreshToken, cookieOptions)
+        .json(responsePayload);
+    }
+
+    return res.status(200).json(responsePayload);
   } catch (error) {
     console.error("Error saving profile:", error);
     return res.status(500).json({

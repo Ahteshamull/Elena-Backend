@@ -14,6 +14,9 @@ export const allUser = async (req, res) => {
     const filter = {};
     if (role) {
       filter.role = role;
+      if (role === "chef") {
+        filter.isApprovedByAdmin = true;
+      }
     }
 
     const totalUsers = await userModel.countDocuments(filter);
