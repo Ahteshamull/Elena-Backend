@@ -178,8 +178,15 @@ export const createCheckoutSession = async (req, res) => {
       return res.status(400).json({ success: false, message: "The chef has not set up their payment account yet." });
     }
 
+    const { paymentType } = req.body || {};
+    let amountToCharge = booking.totalAmount;
+    
+    if (paymentType === "minimum" && booking.minimumFee && booking.minimumFee > 0) {
+      amountToCharge = booking.minimumFee;
+    }
+
     // Amount calculations
-    const totalAmount = booking.totalAmount;
+    const totalAmount = amountToCharge;
     const adminCut = totalAmount * 0.20;
     const chefCut = totalAmount - adminCut;
 

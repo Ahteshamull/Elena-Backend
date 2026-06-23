@@ -87,6 +87,7 @@ const formatBookingsWithChefInfo = async (bookingsInput) => {
         arrivalTime: bookingJSON.arrivalTime,
         numberOfGuests: bookingJSON.numberOfGuests,
         totalAmount: bookingJSON.totalAmount,
+        minimumFee: bookingJSON.minimumFee,
         status: bookingJSON.status,
         paymentStatus: paymentMap[bookingJSON._id.toString()] || "UNPAID",
         paymentId: paymentIdMap[bookingJSON._id.toString()] || null,
@@ -302,7 +303,7 @@ export const createBooking = async (req, res) => {
 
     let totalAmount = 0;
     if (!isCustomQuote) {
-      totalAmount = minimumFee + guestCount * perPersonRate;
+      totalAmount = Math.max(minimumFee, guestCount * perPersonRate);
     }
 
     const newBooking = new bookingModel({
@@ -317,6 +318,7 @@ export const createBooking = async (req, res) => {
       arrivalTime,
       numberOfGuests: guestCount,
       totalAmount,
+      minimumFee,
       status: "pending",
     });
 

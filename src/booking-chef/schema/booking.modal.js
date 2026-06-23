@@ -52,7 +52,11 @@ const bookingSchema = new Schema(
       type: Number,
       required: true,
     },
- totalAmount: {
+    totalAmount: {
+      type: Number,
+      default: 0,
+    },
+    minimumFee: {
       type: Number,
       default: 0,
     },
