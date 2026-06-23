@@ -70,7 +70,7 @@
 
             appendLog(`Attempting to connect as ${myUserId}...`);
             
-            socket = io(process.env.BASE_URL, {
+            socket = io(process.env.BACKEND_URL, {
                 query: { userId: myUserId },
                 transports: ["websocket", "polling"]
             });
