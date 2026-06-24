@@ -52,6 +52,10 @@ const bookingSchema = new Schema(
       type: Number,
       required: true,
     },
+    notes: {
+      type: String,
+      trim: true,
+    },
     totalAmount: {
       type: Number,
       default: 0,

@@ -138,6 +138,7 @@ export const createBooking = async (req, res) => {
       eventDate,
       arrivalTime,
       numberOfGuests,
+      notes,
     } = req.body;
 
     // Validate request fields
@@ -320,6 +321,7 @@ export const createBooking = async (req, res) => {
       totalAmount,
       minimumFee,
       status: "pending",
+      notes,
     });
 
     const savedBooking = await newBooking.save();
